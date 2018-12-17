@@ -22,7 +22,6 @@
 
 class node_access
 {
-
   public:
     int lock_fd;
 

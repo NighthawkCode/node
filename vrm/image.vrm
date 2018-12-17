@@ -1,0 +1,23 @@
+
+// Use namespaces for encapsulation, like in C++. 
+// Close the namespace at the end
+namespace node_msg
+{
+    // This is a POD, a simple structure
+    // Prefer POD, they are much faster for serdes
+    struct image 
+    {
+        u32     rows;
+        uint32  cols;
+        s32     format;       // opengl format
+        s32     type;         // opengl type
+        double  timestamp;
+        u8      pixels[]; // raw data
+    }
+
+    struct image_channel
+    {
+        u32     num;
+        image   ring[];
+    }
+}
