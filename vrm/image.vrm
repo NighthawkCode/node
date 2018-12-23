@@ -15,9 +15,6 @@ namespace node_msg
         u8      pixels[]; // raw data
     }
 
-    struct image_channel
-    {
-        u32     num;
-        image   ring[];
-    }
+    // This defines a channel of struct image
+    channel image_channel : image
 }

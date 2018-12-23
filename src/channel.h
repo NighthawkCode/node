@@ -9,7 +9,7 @@ class channel
     u32   length;
 
     // Channel fields
-    u64 hash;
+    u64   hash;
 
 public:
     // Open channel, returns the pointer if it worked
