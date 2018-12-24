@@ -8,6 +8,7 @@ cc_binary(
     deps = [
         "//:vrm_messages",
         "@vrm//:vrm_headers",
+        "//:node",
     ],
 )
 

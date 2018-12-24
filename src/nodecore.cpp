@@ -60,7 +60,7 @@ class node_access
     }
 };
 
-int main(int argc, char **argv)
+int main_int(int argc, char **argv)
 {
     const int mem_length = 128 * KB;
 

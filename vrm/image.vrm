@@ -12,9 +12,7 @@ namespace node_msg
         s32     format;       // opengl format
         s32     type;         // opengl type
         double  timestamp;
-        u8      pixels[]; // raw data
+        u32     pixels[256];  // raw data
     }
 
-    // This defines a channel of struct image
-    channel image_channel : image
 }
