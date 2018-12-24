@@ -22,6 +22,8 @@ struct topic_info
 /// This class handles the registration of channels in a system
 class nodecore
 {
+    void *addr = nullptr;
+    int mem_fd = 0;
 public:
     // This function will access the current node system.
     bool open();
@@ -40,4 +42,6 @@ public:
     // Get information on a topic on the system, based on the name of the topic.
     // returns false if there is no topic with that name
     bool get_topic_info(const std::string& name, topic_info& info);
+
+    ~nodecore();
 };

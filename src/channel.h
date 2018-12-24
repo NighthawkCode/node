@@ -4,23 +4,11 @@
 #include "nodecore.h"
 #include "circular_buffer.h"
 
+void* helper_open_channel(const channel_info& info);
+
 template< class T>
 class topic
 {
-    class channel_helper
-    {
-        // Memory fields
-        void* mem;
-        u32   length;
-
-        // Channel fields
-        u64   hash;
-
-    public:
-        // Open channel, returns the pointer if it worked
-        void *open(const channel_info& info);
-    };
-
     circular_buffer indices; // Indices should be allocated inside of data... 
     u8* data = nullptr;
 
@@ -61,8 +49,7 @@ public:
             } 
             
             // Now we have the topic info on info
-            channel_helper ch;
-            data = (u8 *)ch.open(info.cn_info);
+            data = (u8 *)helper_open_channel(info.cn_info);
             if (!data) {
                 return false;
             }
