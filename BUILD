@@ -7,14 +7,17 @@ cc_library(
         "src/nodecore.h",
         "src/circular_buffer.h",
         "src/nodecore.cpp",
+        "src/node_registry.cpp",
     ],
     hdrs = [
         "src/channel.h",
+        "src/node_registry.h",
     ],
     includes = [
         "src",
     ]
 )
+
 
 genrule(
     name = "image_gen",

@@ -8,10 +8,12 @@
 #include <string.h> 
 #include <errno.h>
 #include "registry.h"
+#include "node_registry.h"
 
 #define NODE_REGISTRY_PORT 25678
 #define NUM_CONNECTIONS    10
 #define BUFFER_SIZE        8196
+
 
 int main(int argc, char **argv)
 {
@@ -21,6 +23,7 @@ int main(int argc, char **argv)
     int addrlen = sizeof(address); 
     char *buffer = new char[BUFFER_SIZE]; 
 
+    node_registry reg;
     printf("Starting server\n");
 
     // Creating socket file descriptor 
@@ -71,6 +74,8 @@ int main(int argc, char **argv)
         // Handle here the request
         valread = read( new_socket , buffer, BUFFER_SIZE); 
         node_msg::registry_request request;
+        node_msg::registry_reply reply;
+
         bool ret = request.decode(buffer, valread);
         if (!ret) {
             printf("Error decoding the request\n");
@@ -87,14 +92,39 @@ int main(int argc, char **argv)
         printf("Chn size: %d\n", request.chn_size);
 
         // TODO: Here we would do internal work for the request, creation, query...
-
-        node_msg::registry_reply reply;
-        reply.return_val = 0; // everything's fine
-        reply.topic_name = request.topic_name;
-        reply.msg_name = request.msg_name;
-        reply.msg_hash = request.msg_hash;
-        reply.chn_path = request.chn_path;
-        reply.chn_size = request.chn_size;
+        if (request.create_topic) {
+            topic_info inf;
+            inf.name = request.topic_name;
+            inf.message_name = request.msg_name;
+            inf.message_hash = request.msg_hash;
+            inf.cn_info.channel_path = request.chn_path;
+            inf.cn_info.channel_size = request.chn_size;
+            ret = reg.create_topic(inf);
+            if (!ret) {
+                reply.return_val = 1; // error
+            } else {
+                reply.return_val = 0;
+                reply.topic_name = request.topic_name;
+                reply.msg_name = request.msg_name;
+                reply.msg_hash = request.msg_hash;
+                reply.chn_path = request.chn_path;
+                reply.chn_size = request.chn_size;
+            }
+        } else {
+            // if it is not a create, it is a query
+            topic_info inf;
+            ret = reg.get_topic_info(request.topic_name, inf);
+            if (!ret) {
+                reply.return_val = 1;
+            } else {
+                reply.return_val = 0;
+                reply.topic_name = inf.name;
+                reply.msg_name = inf.message_name;
+                reply.msg_hash = inf.message_hash;
+                reply.chn_path = inf.cn_info.channel_path;
+                reply.chn_size = inf.cn_info.channel_size;
+            }
+        }
 
         size_t reply_size = reply.encode_size();
         ret = reply.encode(buffer, BUFFER_SIZE);
