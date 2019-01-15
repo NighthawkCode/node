@@ -65,7 +65,7 @@ public:
         }
         
         // Producer: get a pointer to a struct to fill
-        T* prod_get_image()
+        T* prod_get_slot()
         {
             // This call might block
             unsigned int elem_index = indices.get_next_empty();
@@ -81,7 +81,7 @@ public:
         }
         
         // Consumer: get a pointer to the next struct from the publisher
-        T* cons_get_image()
+        T* cons_get_slot()
         {
             // This call might block
             // TODO: how to handle multiple consumers?

@@ -17,7 +17,7 @@ cc_library(
 )
 
 genrule(
-    name = "vrm_gen",
+    name = "image_gen",
     srcs = [
         "vrm/image.vrm",
     ],
@@ -30,10 +30,25 @@ genrule(
     cmd = "$(location @vrm//:vrm) $(location vrm/image.vrm) > $@",
 )
 
+genrule(
+    name = "registry_gen",
+    srcs = [
+        "vrm/registry.vrm",
+    ],
+    outs = [
+        "registry.h",
+    ],
+    tools = [
+        "@vrm//:vrm",
+    ],
+    cmd = "$(location @vrm//:vrm) $(location vrm/registry.vrm) > $@",
+)
+
 cc_library(
     name = "vrm_messages",
     hdrs = [
-        ":vrm_gen",
+        ":image.h",
+        ":registry.h",
         "@vrm//:vrm_headers",
     ],
     includes=[

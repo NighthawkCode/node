@@ -9,11 +9,13 @@ int main(int argc, char **argv)
 
     printf("Hello, I am a producer of messages\n");
 
+    // List existing topics
+
     cn.open_channel("topic", true);
     cn.prod_init(); 
 
     for(int it = 0; it < 150; it++) {
-        node_msg::image* img = cn.prod_get_image();
+        node_msg::image* img = cn.prod_get_slot();
         img->rows = 3+it;
         img->cols = 3+it;
         img->format = 12;

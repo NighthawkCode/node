@@ -1,0 +1,27 @@
+
+// Use namespaces for encapsulation, like in C++. 
+// Close the namespace at the end
+namespace node_msg
+{
+    // This is a POD, a simple structure
+    // Prefer POD, they are much faster for serdes
+    struct registry_request 
+    {
+        u32     create_topic; // is this request to create or get a topic?
+        string  topic_name;
+        string  msg_name;
+        u64     msg_hash;
+        string  chn_path;
+        u32     chn_size;
+    }
+
+    struct registry_reply
+    {
+        u32     return_val;
+        string  topic_name;
+        string  msg_name;
+        u64     msg_hash;
+        string  chn_path;
+        u32     chn_size;
+    }
+}
