@@ -84,7 +84,7 @@ int main(int argc, char **argv)
         }
 
         printf("Request to the server:\n");
-        printf("Create topic: %d\n", request.create_topic);
+        printf("Create topic: %d\n", request.action);
         printf("Topic name: %s\n", request.topic_name.c_str());
         printf("Msg name: %s\n", request.msg_name.c_str());
         printf("Msg Hash: %08lX\n", request.msg_hash);
@@ -92,7 +92,7 @@ int main(int argc, char **argv)
         printf("Chn size: %d\n", request.chn_size);
 
         // TODO: Here we would do internal work for the request, creation, query...
-        if (request.create_topic) {
+        if (request.action == node_msg::CREATE_TOPIC) {
             topic_info inf;
             inf.name = request.topic_name;
             inf.message_name = request.msg_name;
@@ -101,29 +101,47 @@ int main(int argc, char **argv)
             inf.cn_info.channel_size = request.chn_size;
             ret = reg.create_topic(inf);
             if (!ret) {
-                reply.return_val = 1; // error
+                reply.status = node_msg::GENERIC_ERROR; // error
             } else {
-                reply.return_val = 0;
+                reply.status = node_msg::SUCCESS;
                 reply.topic_name = request.topic_name;
                 reply.msg_name = request.msg_name;
                 reply.msg_hash = request.msg_hash;
                 reply.chn_path = request.chn_path;
                 reply.chn_size = request.chn_size;
             }
-        } else {
-            // if it is not a create, it is a query
+        } else if (request.action == node_msg::TOPIC_BY_NAME) {
+            // search topic by name 
             topic_info inf;
             ret = reg.get_topic_info(request.topic_name, inf);
             if (!ret) {
-                reply.return_val = 1;
+                reply.status = node_msg::TOPIC_NOT_FOUND;
             } else {
-                reply.return_val = 0;
+                reply.status = node_msg::SUCCESS;
                 reply.topic_name = inf.name;
                 reply.msg_name = inf.message_name;
                 reply.msg_hash = inf.message_hash;
                 reply.chn_path = inf.cn_info.channel_path;
                 reply.chn_size = inf.cn_info.channel_size;
             }
+        } else if (request.action == node_msg::NUM_TOPICS) {
+            reply.status = node_msg::SUCCESS;
+            reply.num_topics = reg.num_topics();
+        } else if (request.action == node_msg::TOPIC_AT_INDEX) {
+            topic_info inf;
+            ret = reg.get_topic_info(request.topic_index, inf);
+            if (!ret) {
+                reply.status = node_msg::INDEX_OUT_OF_BOUNDS;
+            } else {
+                reply.status = node_msg::SUCCESS;
+                reply.topic_name = inf.name;
+                reply.msg_name = inf.message_name;
+                reply.msg_hash = inf.message_hash;
+                reply.chn_path = inf.cn_info.channel_path;
+                reply.chn_size = inf.cn_info.channel_size;
+            }
+        } else {
+            reply.status = node_msg::REQUEST_INVALID;
         }
 
         size_t reply_size = reply.encode_size();

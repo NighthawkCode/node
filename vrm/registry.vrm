@@ -3,11 +3,29 @@
 // Close the namespace at the end
 namespace node_msg
 {
+    enum RequestType
+    {
+        CREATE_TOPIC,
+        NUM_TOPICS,
+        TOPIC_AT_INDEX,
+        TOPIC_BY_NAME,
+    }
+
+    enum RequestStatus
+    {
+        SUCCESS,
+        TOPIC_NOT_FOUND,
+        INDEX_OUT_OF_BOUNDS,
+        REQUEST_INVALID,
+        GENERIC_ERROR,
+    }
+
     // This is a POD, a simple structure
     // Prefer POD, they are much faster for serdes
     struct registry_request 
     {
-        u32     create_topic; // is this request to create or get a topic?
+        RequestType action; // is this request to create or get a topic?
+        u32     topic_index; // to be used when querying by index
         string  topic_name;
         string  msg_name;
         u64     msg_hash;
@@ -17,7 +35,8 @@ namespace node_msg
 
     struct registry_reply
     {
-        u32     return_val;
+        RequestStatus status;
+        u32     num_topics; // for the NUM_TOPICS query
         string  topic_name;
         string  msg_name;
         u64     msg_hash;

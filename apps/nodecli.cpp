@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
 
     // First, send our request to the server
     node_msg::registry_request request;
-    request.create_topic = 1;
+    request.action = node_msg::CREATE_TOPIC;
     request.topic_name = "my_topic";
     request.msg_hash = node_msg::image::TYPE_HASH;
     request.msg_name = node_msg::image::TYPE_STRING;
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
     }
 
     printf("Reply from the server:\n");
-    printf("Return value: %d\n", reply.return_val);
+    printf("Return status: %d\n", reply.status);
     printf("Topic name: %s\n", reply.topic_name.c_str());
     printf("Msg name: %s\n", reply.msg_name.c_str());
     printf("Msg Hash: %08lX\n", reply.msg_hash);
