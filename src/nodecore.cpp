@@ -169,7 +169,15 @@ bool nodecore::open(const std::string& hostname)
 // Get the number of open channels on the system
 u32 nodecore::num_channels()
 {
-    return 0;
+    node_msg::registry_request req = {};
+    node_msg::registry_reply reply = {};
+
+    req.action = node_msg::NUM_TOPICS;
+    bool ret = send_request(hostname, req, reply);    
+    if (!ret) {
+        return 0;
+    }
+    return reply.num_topics;
 }
 
 // This function retrieves the channel info based on the index, the 
@@ -177,22 +185,64 @@ u32 nodecore::num_channels()
 // channel on that index
 bool nodecore::get_topic_info(u32 channel_index, topic_info& info)
 {
-    return false;
+    node_msg::registry_request req = {};
+    node_msg::registry_reply reply = {};
+
+    req.action = node_msg::TOPIC_AT_INDEX;
+    req.topic_index = channel_index;    
+    bool ret = send_request(hostname, req, reply);    
+    if (!ret) return false;
+
+    info.name = reply.topic_name;
+    info.message_name = reply.msg_name;
+    info.message_hash = reply.msg_hash;
+    info.cn_info.channel_path = reply.chn_path;
+    info.cn_info.channel_size = reply.chn_size;
+    return true;
 }
 
 // Create a new channel on the system, with the information on info
 bool nodecore::create_topic(const topic_info& info)
 {
-    return false;
+    node_msg::registry_request req = {};
+    node_msg::registry_reply reply = {};
+
+    req.action = node_msg::CREATE_TOPIC;
+
+    req.topic_name = info.name;
+    req.msg_hash = info.message_hash;
+    req.msg_name = info.message_name;
+    req.chn_path = info.cn_info.channel_path;
+    req.chn_size = info.cn_info.channel_size;
+
+    bool ret = send_request(hostname, req, reply);    
+
+    return ret;
 }
 
 // Get information on a topic on the system, based on the name of the topic.
 // returns false if there is no topic with that name
 bool nodecore::get_topic_info(const std::string& name, topic_info& info)
 {
-    return false;
+    node_msg::registry_request req = {};
+    node_msg::registry_reply reply = {};
+
+    req.action = node_msg::TOPIC_BY_NAME;
+    req.topic_name = name;
+
+    bool ret = send_request(hostname, req, reply);    
+    if (!ret) return false;
+
+    info.name = reply.topic_name;
+    info.message_name = reply.msg_name;
+    info.message_hash = reply.msg_hash;
+    info.cn_info.channel_path = reply.chn_path;
+    info.cn_info.channel_size = reply.chn_size;
+    return true;
 }
 
+/// This function is meant to create the shared memory for a shm_channel
+//  It returns a pointer to the mapped memory for sharing
 void* helper_open_channel(const channel_info& info)
 {
     return nullptr;
