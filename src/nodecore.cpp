@@ -7,7 +7,16 @@
 #include <sys/file.h>
 #include <fcntl.h>
 #include <errno.h>
+
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <string.h>
+#include <arpa/inet.h> 
+
+#include "defer.h"
 #include "nodecore.h"
+#include "registry.h"
 
 /*
     In order for this to work, it is preferable if we disable ASLR
@@ -62,9 +71,72 @@ class node_access
 };
 
 static const int mem_length = 128 * KB;
+// Put this in a header?
+#define BUFFER_SIZE 4096
+#define NODE_REGISTRY_PORT 25678
 
-bool nodecore::open()
+static bool send_request(const std::string &server_ip, node_msg::registry_request &request, node_msg::registry_reply &reply)
 {
+    int sockfd = 0, n = 0;
+    char *sendBuffer = new char[BUFFER_SIZE];
+    char *recvBuffer = new char[BUFFER_SIZE];
+    struct sockaddr_in serv_addr; 
+
+    DEFER( close(sockfd) );
+    DEFER( delete sendBuffer );
+    DEFER( delete recvBuffer );
+
+    memset(recvBuffer, 0, BUFFER_SIZE);
+    if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        fprintf(stderr, "\n Error : Could not create socket \n");
+        return false;
+    } 
+
+    memset(&serv_addr, 0, sizeof(serv_addr)); 
+
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(NODE_REGISTRY_PORT); 
+
+    if(inet_pton(AF_INET, server_ip.c_str(), &serv_addr.sin_addr)<=0) {
+        fprintf(stderr, "\n inet_pton error occured\n");
+        return false;
+    }
+
+    if( connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+    {
+       fprintf(stderr, "\n Error : Connect Failed \n");
+       return false;
+    }
+
+    size_t enc_size = request.encode_size();
+    bool ret = request.encode(sendBuffer, BUFFER_SIZE);
+    if (!ret) {
+        fprintf(stderr, "Error encoding\n");
+        return false;
+    }
+    n = write(sockfd, sendBuffer, enc_size);
+    if (n != (ssize_t)enc_size) {
+        fprintf(stderr, "Error sending request, wanted to send %ld bytes but only sent %d bytes\n", enc_size, n);
+        return false;
+    }
+
+    n = read(sockfd, recvBuffer, BUFFER_SIZE-1);
+    if (n <= 0) {
+        fprintf(stderr, "Error receiving a reply\n");
+        return false;
+    }
+    ret = reply.decode(recvBuffer, n);
+    if (!ret) {
+        fprintf(stderr, "Error decoding the received reply\n");
+        return false;
+    }
+
+    return true;
+}
+
+bool nodecore::open(const std::string& hostname)
+{
+   /* 
     node_access node_lock;
 
     int ret = node_lock.access("/tmp/node.lock", true);
@@ -85,8 +157,13 @@ bool nodecore::open()
         addr = nullptr;
         return false;
     }
+*/
+    node_msg::registry_request req = {};
+    node_msg::registry_reply reply = {};
 
-    return true;
+    req.action = node_msg::NUM_TOPICS;
+    bool ret = send_request(hostname, req, reply);    
+    return ret;
 }
 
 // Get the number of open channels on the system
@@ -123,6 +200,7 @@ void* helper_open_channel(const channel_info& info)
 
 nodecore::~nodecore()
 {
+   /* 
     if (addr != nullptr ) {
         munmap(addr, mem_length);
         addr = nullptr;
@@ -131,5 +209,6 @@ nodecore::~nodecore()
         close(mem_fd);
         mem_fd = 0;
     }
+    */
 }
 

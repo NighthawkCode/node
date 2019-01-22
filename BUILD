@@ -8,6 +8,8 @@ cc_library(
         "src/circular_buffer.h",
         "src/nodecore.cpp",
         "src/node_registry.cpp",
+        "src/defer.h",
+        "//:registry.h",
     ],
     hdrs = [
         "src/channel.h",
@@ -15,6 +17,9 @@ cc_library(
     ],
     includes = [
         "src",
+    ],
+    deps = [
+        "@vrm//:vrm_headers",
     ]
 )
 

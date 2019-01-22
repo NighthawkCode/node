@@ -19,14 +19,13 @@ struct topic_info
     channel_info cn_info;
 };
 
-/// This class handles the registration of channels in a system
+/// This class handles the registration of topics in a system
 class nodecore
 {
-    void *addr = nullptr;
-    int mem_fd = 0;
+    std::string hostname;
 public:
     // This function will access the current node system.
-    bool open();
+    bool open(const std::string& hostname = "");
 
     // Get the number of open channels on the system
     u32 num_channels();
