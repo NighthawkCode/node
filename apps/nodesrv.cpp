@@ -14,6 +14,8 @@
 #define NUM_CONNECTIONS    10
 #define BUFFER_SIZE        8196
 
+void printRequest(const node_msg::registry_request& request);
+void printReply(const node_msg::registry_reply& reply);
 
 int main(int argc, char **argv)
 {
@@ -83,13 +85,7 @@ int main(int argc, char **argv)
             continue;
         }
 
-        printf("Request to the server:\n");
-        printf("Create topic: %d\n", request.action);
-        printf("Topic name: %s\n", request.topic_name.c_str());
-        printf("Msg name: %s\n", request.msg_name.c_str());
-        printf("Msg Hash: %08lX\n", request.msg_hash);
-        printf("Chn Path: %s\n", request.chn_path.c_str());
-        printf("Chn size: %d\n", request.chn_size);
+        printRequest(request);
 
         // TODO: Here we would do internal work for the request, creation, query...
         if (request.action == node_msg::CREATE_TOPIC) {
@@ -99,10 +95,13 @@ int main(int argc, char **argv)
             inf.message_hash = request.msg_hash;
             inf.cn_info.channel_path = request.chn_path;
             inf.cn_info.channel_size = request.chn_size;
+            inf.publisher_pid = request.publisher_pid;
             ret = reg.create_topic(inf);
             if (!ret) {
+                printf(">> Create topic failed\n");
                 reply.status = node_msg::GENERIC_ERROR; // error
             } else {
+                printf(">> Create topic succeeded\n");
                 reply.status = node_msg::SUCCESS;
                 reply.topic_name = request.topic_name;
                 reply.msg_name = request.msg_name;
@@ -110,13 +109,22 @@ int main(int argc, char **argv)
                 reply.chn_path = request.chn_path;
                 reply.chn_size = request.chn_size;
             }
+        } else if (request.action == node_msg::ADVERTISE_TOPIC) {
+            topic_info inf;
+            inf.name = request.topic_name;
+            // Maybe ensure the pid of the request matches what is stored
+            ret = reg.make_topic_visible(inf);
+            if (ret) reply.status = node_msg::SUCCESS;
+            else reply.status = node_msg::TOPIC_NOT_FOUND;
         } else if (request.action == node_msg::TOPIC_BY_NAME) {
             // search topic by name 
             topic_info inf;
             ret = reg.get_topic_info(request.topic_name, inf);
             if (!ret) {
+                printf(">> Query Topic by name failed\n");
                 reply.status = node_msg::TOPIC_NOT_FOUND;
             } else {
+                printf(">> Query Topic by name succeeded\n");
                 reply.status = node_msg::SUCCESS;
                 reply.topic_name = inf.name;
                 reply.msg_name = inf.message_name;
@@ -127,12 +135,15 @@ int main(int argc, char **argv)
         } else if (request.action == node_msg::NUM_TOPICS) {
             reply.status = node_msg::SUCCESS;
             reply.num_topics = reg.num_topics();
+            printf(">> Query Num Topics returned %d topics\n", reply.num_topics);
         } else if (request.action == node_msg::TOPIC_AT_INDEX) {
             topic_info inf;
             ret = reg.get_topic_info(request.topic_index, inf);
             if (!ret) {
+                printf(">> Query Topic by index failed\n");
                 reply.status = node_msg::INDEX_OUT_OF_BOUNDS;
             } else {
+                printf(">> Query Topic by index succeeded\n");
                 reply.status = node_msg::SUCCESS;
                 reply.topic_name = inf.name;
                 reply.msg_name = inf.message_name;

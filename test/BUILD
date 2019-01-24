@@ -4,7 +4,7 @@ cc_binary(
         "producer.cpp",
         "//:image.h",
     ],
-    linkopts = ["-lrt"],
+    linkopts = ["-lrt", "-lpthread"],
     deps = [
         "//:vrm_messages",
         "@vrm//:vrm_headers",
@@ -16,6 +16,12 @@ cc_binary(
     name="cons",
     srcs=[
         "consumer.cpp",
+        "//:image.h",
     ],
-    linkopts = ["-lrt"],
+    linkopts = ["-lrt", "-lpthread"],
+    deps = [
+        "//:vrm_messages",
+        "@vrm//:vrm_headers",
+        "//:node",
+    ],
 )

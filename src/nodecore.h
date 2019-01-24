@@ -17,6 +17,8 @@ struct topic_info
     std::string  message_name;
     u64          message_hash;
     channel_info cn_info;
+    u32          publisher_pid;
+    bool         visible;
 };
 
 /// This class handles the registration of topics in a system
@@ -25,7 +27,7 @@ class nodecore
     std::string hostname;
 public:
     // This function will access the current node system.
-    bool open(const std::string& hostname = "");
+    bool open(const std::string& host = "");
 
     // Get the number of open channels on the system
     u32 num_channels();
@@ -42,5 +44,6 @@ public:
     // returns false if there is no topic with that name
     bool get_topic_info(const std::string& name, topic_info& info);
 
+    bool make_topic_visible(const std::string& name);
     ~nodecore();
 };

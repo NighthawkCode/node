@@ -4,6 +4,7 @@ cc_binary(
         "nodesrv.cpp",
         "//:registry.h",
     ],
+    linkopts = ["-lrt", "-lpthread"],
     deps = [
         "@vrm//:vrm_headers",
         "//:node",
@@ -17,6 +18,7 @@ cc_binary(
         "//:registry.h",
         "//:image.h",
     ],
+    linkopts = ["-lrt", "-lpthread"],
     deps = [
         "@vrm//:vrm_headers",
     ]

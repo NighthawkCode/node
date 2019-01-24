@@ -9,6 +9,8 @@ cc_library(
         "src/nodecore.cpp",
         "src/node_registry.cpp",
         "src/defer.h",
+        "src/process.h",
+        "src/process.cpp",
         "//:registry.h",
     ],
     hdrs = [

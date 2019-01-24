@@ -22,4 +22,7 @@ public:
     // Get information on a topic on the system, based on the name of the topic.
     // returns false if there is no topic with that name
     bool get_topic_info(const std::string& name, topic_info& info);
+
+    // Find the topic and make it visible
+    bool make_topic_visible(const topic_info& info);
 };
