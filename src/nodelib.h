@@ -22,7 +22,7 @@ struct topic_info
 };
 
 /// This class handles the registration of topics in a system
-class nodecore
+class nodelib
 {
     std::string hostname;
 public:
@@ -45,5 +45,4 @@ public:
     bool get_topic_info(const std::string& name, topic_info& info);
 
     bool make_topic_visible(const std::string& name);
-    ~nodecore();
 };

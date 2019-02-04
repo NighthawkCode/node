@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h> // for usleep
 #include "image.h"
 #include "channel.h"
 
@@ -21,6 +22,7 @@ int main(int argc, char **argv)
         node_msg::image *img = cn.get_slot();
 
         // maybe do something with img here
+        usleep(500000);
 
         printf(" releasing data ... ");
         fflush(stdout);

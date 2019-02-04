@@ -4,9 +4,9 @@ cc_library(
     name = "node",
     srcs = [
         "src/mytypes.h",
-        "src/nodecore.h",
+        "src/nodelib.h",
         "src/circular_buffer.h",
-        "src/nodecore.cpp",
+        "src/nodelib.cpp",
         "src/node_registry.cpp",
         "src/defer.h",
         "src/process.h",

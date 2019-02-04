@@ -1,6 +1,6 @@
 #pragma once
 
-#include "nodecore.h"
+#include "nodelib.h"
 #include <vector>
 
 class node_registry

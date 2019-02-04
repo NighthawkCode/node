@@ -16,7 +16,7 @@
 #include <arpa/inet.h> 
 
 #include "defer.h"
-#include "nodecore.h"
+#include "nodelib.h"
 #include "registry.h"
 #include "process.h"
 #include "circular_buffer.h"
@@ -184,7 +184,7 @@ static bool send_request(const std::string &server_ip,
     return true;
 }
 
-bool nodecore::open(const std::string& host)
+bool nodelib::open(const std::string& host)
 {
    /* 
     node_access node_lock;
@@ -222,7 +222,7 @@ bool nodecore::open(const std::string& host)
 }
 
 // Get the number of open channels on the system
-u32 nodecore::num_channels()
+u32 nodelib::num_channels()
 {
     node_msg::registry_request req = {};
     node_msg::registry_reply reply = {};
@@ -238,7 +238,7 @@ u32 nodecore::num_channels()
 // This function retrieves the channel info based on the index, the 
 // info parameter is output. The function returns false if there is no 
 // channel on that index
-bool nodecore::get_topic_info(u32 channel_index, topic_info& info)
+bool nodelib::get_topic_info(u32 channel_index, topic_info& info)
 {
     node_msg::registry_request req = {};
     node_msg::registry_reply reply = {};
@@ -260,7 +260,7 @@ bool nodecore::get_topic_info(u32 channel_index, topic_info& info)
     return true;
 }
 
-bool nodecore::make_topic_visible(const std::string& name)
+bool nodelib::make_topic_visible(const std::string& name)
 {
     node_msg::registry_request req = {};
     node_msg::registry_reply reply = {};
@@ -278,7 +278,7 @@ bool nodecore::make_topic_visible(const std::string& name)
 }
 
 // Create a new channel on the system, with the information on info
-bool nodecore::create_topic(const topic_info& info)
+bool nodelib::create_topic(const topic_info& info)
 {
     node_msg::registry_request req = {};
     node_msg::registry_reply reply = {};
@@ -309,7 +309,7 @@ bool nodecore::create_topic(const topic_info& info)
 
 // Get information on a topic on the system, based on the name of the topic.
 // returns false if there is no topic with that name
-bool nodecore::get_topic_info(const std::string& name, topic_info& info)
+bool nodelib::get_topic_info(const std::string& name, topic_info& info)
 {
     node_msg::registry_request req = {};
     node_msg::registry_reply reply = {};
@@ -351,20 +351,6 @@ void* helper_open_channel(const channel_info& info, int& mem_fd)
     }
 
     return addr;
-}
-
-nodecore::~nodecore()
-{
-   /* 
-    if (addr != nullptr ) {
-        munmap(addr, mem_length);
-        addr = nullptr;
-    }
-    if (mem_fd != 0) {
-        close(mem_fd);
-        mem_fd = 0;
-    }
-    */
 }
 
 void helper_clean(void *addr, int mem_fd, u32 mem_length)

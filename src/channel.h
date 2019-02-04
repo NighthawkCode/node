@@ -1,7 +1,7 @@
 #pragma once
 #include "mytypes.h"
 #include <string>
-#include "nodecore.h"
+#include "nodelib.h"
 #include "circular_buffer.h"
 
 void* helper_open_channel(const channel_info& info, int& mem_fd);
@@ -24,10 +24,10 @@ public:
     {
         bool bret = false;
         // Find the registry, inquire about this channel
-        nodecore reg;
+        nodelib node;
         topic_info info;
 
-        bret = reg.open();
+        bret = node.open();
         if (!bret) {
             return false;
         }
@@ -44,7 +44,7 @@ public:
         info.cn_info.channel_path = "/node_";
         info.cn_info.channel_path += info.message_hash;
         info.cn_info.channel_size = sz;
-        bret = reg.create_topic(info);
+        bret = node.create_topic(info);
         if (!bret) {
             return false;
         }
@@ -64,7 +64,7 @@ public:
         elems = (T *)( (u8 *)data + sizeof(circular_buffer));
         indices->initialize(num_elems);
 
-        bret = reg.make_topic_visible(topic_name);
+        bret = node.make_topic_visible(topic_name);
         if (!bret) {
             return false;
         }
@@ -121,16 +121,16 @@ public:
     {
         bool bret = false;
         // Find the registry, inquire about this channel
-        nodecore reg;
+        nodelib node;
         topic_info info;
 
-        bret = reg.open();
+        bret = node.open();
         if (!bret) {
             fprintf(stderr, "Failure to open the node registry\n");
             return false;
         }
 
-        bret = reg.get_topic_info(topic_name, info);
+        bret = node.get_topic_info(topic_name, info);
         if (!bret) {
             // Consumer cannot create new topics
             fprintf(stderr, "Failure to find the topic in the node registry\n");

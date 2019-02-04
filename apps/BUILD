@@ -1,5 +1,5 @@
 cc_binary(
-    name = "nodesrv",
+    name = "nodecore",
     srcs = [
         "nodesrv.cpp",
         "//:registry.h",
