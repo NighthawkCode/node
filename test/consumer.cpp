@@ -10,17 +10,19 @@ int main(int argc, char **argv)
 
     printf("Hello, I am a consumer of messages\n");
 
-    if (!cn.open_channel("topic")) {
-        fprintf(stderr, "Failed to open the topic\n");
+    NodeError res = cn.open_channel("topic");
+    if (res != NE_SUCCESS) {
+        fprintf(stderr, "Failed to open the topic: %d\n", res);
         return -1;
     }
 
-    printf("Now starting consumer\n");
+    printf("Now starting consumer [%d] \n", cn.get_index());
     for(int it=0; it<150; it++) {
         printf(" - Acquiring data (%d)... ", it);
         fflush(stdout);
         node_msg::image *img = cn.get_slot();
 
+        printf("Value of rows: %d ", img->rows);
         // maybe do something with img here
 //        usleep(500000);
 

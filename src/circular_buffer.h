@@ -19,7 +19,7 @@ class circular_buffer
 
     // these two variables are used for producer/consumer
     // If we support multiple consumer, we would have more pairs    
-    sem_t        prod_sem; 
+    sem_t        prod_sem[MAX_CONSUMERS]; 
     sem_t        cons_sem[MAX_CONSUMERS]; 
 
 public:
@@ -137,16 +137,16 @@ public:
         for(int i=0; i<MAX_CONSUMERS; i++) {
             if (valid[i]) {
                 full_[i] = (head_ == tail_[i]);
+                sem_post(&prod_sem[i]);
             }
         }
-        sem_post(&prod_sem);
     }
 
     unsigned int get_next_full(unsigned int idx)
     {
         if (empty_for_this_consumer(idx)) {
             // TODO: Block, add timeout and retry
-            sem_wait(&prod_sem);
+            sem_wait(&prod_sem[idx]);
         }
         return tail_[idx];
     }
@@ -177,13 +177,14 @@ public:
         }
 //        full_ = false;
 
-        int err = sem_init(&prod_sem, 1, 0);
-        if (err != 0) {
-            fprintf(stderr, "Error on initializing the prod semaphore\n");
-        }
+        int err;
 
         for(unsigned int i=0; i< MAX_CONSUMERS; i++) {
             err = sem_init(&cons_sem[i], 1, 0);
+            if (err != 0) {
+                fprintf(stderr, "Error on initializing the cons semaphore\n");
+            }
+            err = sem_init(&prod_sem[i], 1, 0);
             if (err != 0) {
                 fprintf(stderr, "Error on initializing the cons semaphore\n");
             }

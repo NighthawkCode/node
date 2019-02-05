@@ -12,9 +12,10 @@ int main(int argc, char **argv)
 
     // List existing topics
 
-    if (!cn.open_channel("topic")) {
+    NodeError res = cn.open_channel("topic");
+    if (res != NE_SUCCESS) {
         // TODO: make it so the node server does not need restart
-        fprintf(stderr, "Failure to create a topic, maybe you need to restart the node server\n");
+        fprintf(stderr, "Failure to create a topic (%d), maybe you need to restart the node server\n", res);
         return -1;
     }
 
@@ -23,6 +24,7 @@ int main(int argc, char **argv)
         printf(" - Acquiring data (%d)... ", it);
         fflush(stdout);
         node_msg::image* img = cn.get_slot();
+        printf("Previous valud of rows: %d ", img->rows);
         img->rows = 3+it;
         img->cols = 3+it;
         img->format = 12;
