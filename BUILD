@@ -11,6 +11,7 @@ cc_library(
         "src/defer.h",
         "src/process.h",
         "src/process.cpp",
+        "src/nodeerr.h",
         "//:registry.h",
     ],
     hdrs = [

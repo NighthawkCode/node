@@ -20,16 +20,16 @@ public:
         
     // this function will open the channel, allocate memory, set the indices, and
     // do any other needed initialization
-    bool open_channel(const std::string &topic_name, int num_elems = 4)
+    NodeError open_channel(const std::string &topic_name, int num_elems = 4, unsigned int max_consumers = 5)
     {
-        bool bret = false;
+        NodeError res;
         // Find the registry, inquire about this channel
-        nodelib node;
+        nodelib node_lib;
         topic_info info;
 
-        bret = node.open();
-        if (!bret) {
-            return false;
+        res = node_lib.open();
+        if (res != NE_SUCCESS) {
+            return res;
         }
 
         u32 sz = (sizeof(circular_buffer) + num_elems*sizeof(T));
@@ -38,15 +38,20 @@ public:
             sz = sz + 1024 - reminder;
         }
 
+        if (max_consumers >= MAX_CONSUMERS) {
+            return NE_CONSUMER_LIMIT_EXCEEDED;
+        }
+
         info.name = topic_name;
         info.message_name = T::TYPE_STRING;
         info.message_hash = T::TYPE_HASH;
         info.cn_info.channel_path = "/node_";
         info.cn_info.channel_path += info.message_hash;
         info.cn_info.channel_size = sz;
-        bret = node.create_topic(info);
-        if (!bret) {
-            return false;
+        info.cn_info.max_consumers = max_consumers;
+        res = node_lib.create_topic(info);
+        if (res != NE_SUCCESS) {
+            return res;
         }
         printf("New topic created successfully\n");
         
@@ -54,7 +59,7 @@ public:
         data = (u8 *)helper_open_channel(info.cn_info, mem_fd);
         if (!data) {
             printf("Could not open the shared memory\n");
-            return false;
+            return NE_SHARED_MEMORY_OPEN_ERROR;
         }
 
         mem_length = info.cn_info.channel_size;
@@ -64,11 +69,9 @@ public:
         elems = (T *)( (u8 *)data + sizeof(circular_buffer));
         indices->initialize(num_elems);
 
-        bret = node.make_topic_visible(topic_name);
-        if (!bret) {
-            return false;
-        }
-        return true;
+        res = node_lib.make_topic_visible(topic_name);
+
+        return res;
     }
         
     // Producer: get a pointer to a struct to fill
@@ -107,7 +110,8 @@ public:
 template< class T>
 class topic_consumer
 {
-    circular_buffer *indices = nullptr; // Indices should be allocated inside of data... 
+    circular_buffer *indices = nullptr; // Indices are allocated inside of data
+    u32 cons_index = 0; // Indicate which consumer this is, out of multiple in a topic
     u8* data = nullptr;
     int mem_fd = 0;
     u32 mem_length = 0;
@@ -117,31 +121,34 @@ public:
         
     // this function will open the channel, allocate memory, set the indices, and
     // do any other needed initialization
-    bool open_channel(const std::string &topic_name)
+    NodeError open_channel(const std::string &topic_name)
     {
-        bool bret = false;
+        NodeError res;
         // Find the registry, inquire about this channel
-        nodelib node;
+        nodelib node_lib;
         topic_info info;
 
-        bret = node.open();
-        if (!bret) {
+        res = node_lib.open();
+        if (res != NE_SUCCESS) {
             fprintf(stderr, "Failure to open the node registry\n");
-            return false;
+            return res;
         }
 
-        bret = node.get_topic_info(topic_name, info);
-        if (!bret) {
+        res = node_lib.get_topic_info(topic_name, info);
+        if (res != NE_SUCCESS) {
             // Consumer cannot create new topics
             fprintf(stderr, "Failure to find the topic in the node registry\n");
-            return false;
+            if (res == NE_TOPIC_NOT_FOUND) {
+                return NE_PRODUCER_NOT_PRESENT;
+            }
+            return res;
         } 
         
         // Now we have the topic info on info
         data = (u8 *)helper_open_channel(info.cn_info, mem_fd);
         if (!data) {
             fprintf(stderr, "Failure to open the shared memory\n");
-            return false;
+            return NE_SHARED_MEMORY_OPEN_ERROR;
         }
 
         mem_length = info.cn_info.channel_size;
@@ -151,9 +158,18 @@ public:
 
         // do setup of stuff in data now!
         indices = (circular_buffer *)data;
-        elems = (T *)( (u8 *)data + sizeof(circular_buffer));
+        elems = (T *)( (u8 *)data + sizeof(circular_buffer));        
 
-        return true;
+        cons_index = indices->get_cons_number();
+
+        if (cons_index >= info.cn_info.max_consumers) {
+            return NE_CONSUMER_LIMIT_EXCEEDED;
+        }
+
+        indices->initialize_consumer(cons_index);
+
+        // TODO: Add error if the number of consumers is exceeded
+        return NE_SUCCESS;
     }
             
     // Consumer: get a pointer to the next struct from the publisher
@@ -161,7 +177,7 @@ public:
     {
         // This call might block
         // TODO: how to handle multiple consumers?
-        unsigned int elem_index = indices->get_next_full();
+        unsigned int elem_index = indices->get_next_full(cons_index);
         
         return &elems[elem_index];
     }
@@ -169,13 +185,18 @@ public:
     // Consumer: This function assumes that the image* previously returned will no longer be used
     void release()
     {
-        indices->release();
+        indices->release(cons_index);
     }
     
     // This function will do a resize .. TO BE DONE
     bool resize()
     {
         return true;
+    }
+
+    u32 get_index() const 
+    {
+        return cons_index;
     }
 
     ~topic_consumer()
