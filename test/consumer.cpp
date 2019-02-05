@@ -22,7 +22,7 @@ int main(int argc, char **argv)
         node_msg::image *img = cn.get_slot();
 
         // maybe do something with img here
-        usleep(500000);
+//        usleep(500000);
 
         printf(" releasing data ... ");
         fflush(stdout);

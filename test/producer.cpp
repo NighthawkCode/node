@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h> // for usleep
 #include "image.h"
 #include "channel.h"
 
@@ -32,6 +33,7 @@ int main(int argc, char **argv)
         fflush(stdout);
         cn.publish();
         printf(" PUBLISHED!\n");
+        usleep(500000);
     }
 
     return 0;

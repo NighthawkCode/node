@@ -24,10 +24,10 @@ public:
     {
         bool bret = false;
         // Find the registry, inquire about this channel
-        nodelib node;
+        nodelib node_lib;
         topic_info info;
 
-        bret = node.open();
+        bret = node_lib.open();
         if (!bret) {
             return false;
         }
@@ -44,7 +44,7 @@ public:
         info.cn_info.channel_path = "/node_";
         info.cn_info.channel_path += info.message_hash;
         info.cn_info.channel_size = sz;
-        bret = node.create_topic(info);
+        bret = node_lib.create_topic(info);
         if (!bret) {
             return false;
         }
@@ -64,7 +64,7 @@ public:
         elems = (T *)( (u8 *)data + sizeof(circular_buffer));
         indices->initialize(num_elems);
 
-        bret = node.make_topic_visible(topic_name);
+        bret = node_lib.make_topic_visible(topic_name);
         if (!bret) {
             return false;
         }
@@ -107,7 +107,8 @@ public:
 template< class T>
 class topic_consumer
 {
-    circular_buffer *indices = nullptr; // Indices should be allocated inside of data... 
+    circular_buffer *indices = nullptr; // Indices are allocated inside of data
+    u32 cons_index = 0; // Indicate which consumer this is, out of multiple in a topic
     u8* data = nullptr;
     int mem_fd = 0;
     u32 mem_length = 0;
@@ -121,16 +122,16 @@ public:
     {
         bool bret = false;
         // Find the registry, inquire about this channel
-        nodelib node;
+        nodelib node_lib;
         topic_info info;
 
-        bret = node.open();
+        bret = node_lib.open();
         if (!bret) {
             fprintf(stderr, "Failure to open the node registry\n");
             return false;
         }
 
-        bret = node.get_topic_info(topic_name, info);
+        bret = node_lib.get_topic_info(topic_name, info);
         if (!bret) {
             // Consumer cannot create new topics
             fprintf(stderr, "Failure to find the topic in the node registry\n");
@@ -151,8 +152,11 @@ public:
 
         // do setup of stuff in data now!
         indices = (circular_buffer *)data;
-        elems = (T *)( (u8 *)data + sizeof(circular_buffer));
+        elems = (T *)( (u8 *)data + sizeof(circular_buffer));        
 
+        cons_index = indices->get_cons_number();
+
+        indices->initialize_consumer(cons_index);
         return true;
     }
             
@@ -161,7 +165,7 @@ public:
     {
         // This call might block
         // TODO: how to handle multiple consumers?
-        unsigned int elem_index = indices->get_next_full();
+        unsigned int elem_index = indices->get_next_full(cons_index);
         
         return &elems[elem_index];
     }
@@ -169,7 +173,7 @@ public:
     // Consumer: This function assumes that the image* previously returned will no longer be used
     void release()
     {
-        indices->release();
+        indices->release(cons_index);
     }
     
     // This function will do a resize .. TO BE DONE
