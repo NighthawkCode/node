@@ -15,10 +15,7 @@ class circular_buffer
     unsigned int tail_[MAX_CONSUMERS];
     bool         valid[MAX_CONSUMERS];
     bool         full_[MAX_CONSUMERS];
-//    bool         full_ = false;
 
-    // these two variables are used for producer/consumer
-    // If we support multiple consumer, we would have more pairs    
     sem_t        prod_sem[MAX_CONSUMERS]; 
     sem_t        cons_sem[MAX_CONSUMERS]; 
 
@@ -77,7 +74,89 @@ public:
             }
         }
         return is_full;
-//        return full_;
+    }
+
+    /// Get the index on the buffer of the next empty element.
+    /// This function blocks if the buffer is full
+    unsigned int get_next_empty()
+    {
+        for(int i=0; i<MAX_CONSUMERS; i++) {
+            if (valid[i] && full_[i]) {
+                sem_wait(&cons_sem[i]);
+            }
+        }
+        return head_;
+    }
+
+    /// This function will add an item at the top
+    void publish()
+    {
+        head_ = (head_ + 1) % buf_size;
+        // Update full, see if tail and head meet
+        for(int i=0; i<MAX_CONSUMERS; i++) {
+            if (valid[i]) {
+                full_[i] = (head_ == tail_[i]);
+                sem_post(&prod_sem[i]);
+            }
+        }
+    }
+
+    NodeError get_next_full(unsigned int idx, unsigned int &elem_index)
+    {
+        if (empty_for_this_consumer(idx)) {
+            // TODO: Block, add timeout and retry
+            struct timespec ts;
+            auto r = clock_gettime(CLOCK_REALTIME, &ts);
+            assert(r != -1);
+            // Wait at most X seconds. Maybe tweak this?
+            ts.tv_sec += 3;
+            sem_timedwait(&prod_sem[idx], &ts);
+            if (empty_for_this_consumer(idx)) {
+                return NE_CONSUMER_TIME_OUT;
+            }
+        }
+        elem_index = tail_[idx];
+        return NE_SUCCESS;
+    }
+
+    void release(unsigned int idx)
+    {
+        full_[idx] = false;
+        tail_[idx] = inc(tail_[idx]);
+        sem_post(&cons_sem[idx]);
+    }
+
+    // This function is to be called by the producer only, to initialize the memory
+    // and critical sections
+    void initialize(unsigned int num_elems)
+    {
+        buf_size = num_elems;
+        num_cons = 0;
+        head_ = 0;
+        for(unsigned int i=0; i< MAX_CONSUMERS; i++) {
+            tail_[i] = 0;
+            valid[i] = false;
+            full_[i] = false;
+        }
+
+        int err;
+
+        for(unsigned int i=0; i< MAX_CONSUMERS; i++) {
+            err = sem_init(&cons_sem[i], 1, 0);
+            if (err != 0) {
+                fprintf(stderr, "Error on initializing the cons semaphore\n");
+            }
+            err = sem_init(&prod_sem[i], 1, 0);
+            if (err != 0) {
+                fprintf(stderr, "Error on initializing the cons semaphore\n");
+            }
+        }
+    }
+
+    void initialize_consumer(unsigned int idx)
+    {
+        tail_[idx] = head_;
+        valid[idx] = true;
     }
 
 /*
@@ -108,92 +187,4 @@ public:
     }
 */
 
-    /// Get the index on the buffer of the next empty element.
-    /// This function blocks if the buffer is full
-    unsigned int get_next_empty()
-    {
-//        if (full()) {
-
-        for(int i=0; i<MAX_CONSUMERS; i++) {
-            if (valid[i] && full_[i]) {
-                sem_wait(&cons_sem[i]);
-            }
-        }
-        return head_;
-    }
-
-    /// This function will add an item at the top
-    void publish()
-    {
-//        if (full()) {
-            // Not Block
-            // Do we still want to block here and not on next?
-            // sem_wait(&cons_sem);
-//        }
-        // TODO: mutex for this?
-        head_ = (head_ + 1) % buf_size;
-        // Update full, see if tail and head meet
-  //      full_ = head_ == tail_;
-        for(int i=0; i<MAX_CONSUMERS; i++) {
-            if (valid[i]) {
-                full_[i] = (head_ == tail_[i]);
-                sem_post(&prod_sem[i]);
-            }
-        }
-    }
-
-    unsigned int get_next_full(unsigned int idx)
-    {
-        if (empty_for_this_consumer(idx)) {
-            // TODO: Block, add timeout and retry
-            sem_wait(&prod_sem[idx]);
-        }
-        return tail_[idx];
-    }
-
-    void release(unsigned int idx)
-    {
-//        if (empty()) {
-            // TODO: Block
-            // Do we need to do this?
-
-//        }
-        full_[idx] = false;
-        tail_[idx] = inc(tail_[idx]);
-        sem_post(&cons_sem[idx]);
-    }
-
-    // This function is to be called by the producer only, to initialize the memory
-    // and critical sections
-    void initialize(unsigned int num_elems)
-    {
-        buf_size = num_elems;
-        num_cons = 0;
-        head_ = 0;
-        for(unsigned int i=0; i< MAX_CONSUMERS; i++) {
-            tail_[i] = 0;
-            valid[i] = false;
-            full_[i] = false;
-        }
-//        full_ = false;
-
-        int err;
-
-        for(unsigned int i=0; i< MAX_CONSUMERS; i++) {
-            err = sem_init(&cons_sem[i], 1, 0);
-            if (err != 0) {
-                fprintf(stderr, "Error on initializing the cons semaphore\n");
-            }
-            err = sem_init(&prod_sem[i], 1, 0);
-            if (err != 0) {
-                fprintf(stderr, "Error on initializing the cons semaphore\n");
-            }
-        }
-    }
-
-    void initialize_consumer(unsigned int idx)
-    {
-        tail_[idx] = head_;
-        valid[idx] = true;
-    }
 };

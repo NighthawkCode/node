@@ -17,5 +17,6 @@ enum NodeError
     NE_SERVER_INCOMPATIBLE          = 12,
     NE_SHARED_MEMORY_OPEN_ERROR     = 13,
     NE_CONSUMER_LIMIT_EXCEEDED      = 14,
-    NE_PRODUCER_NOT_PRESENT         = 15
+    NE_PRODUCER_NOT_PRESENT         = 15,
+    NE_CONSUMER_TIME_OUT            = 16
 };

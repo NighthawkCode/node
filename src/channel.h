@@ -46,9 +46,10 @@ public:
         info.message_name = T::TYPE_STRING;
         info.message_hash = T::TYPE_HASH;
         info.cn_info.channel_path = "/node_";
-        info.cn_info.channel_path += info.message_hash;
+        info.cn_info.channel_path += std::to_string(info.message_hash);
         info.cn_info.channel_size = sz;
         info.cn_info.max_consumers = max_consumers;
+        info.visible = false;
         res = node_lib.create_topic(info);
         if (res != NE_SUCCESS) {
             return res;
@@ -116,7 +117,7 @@ class topic_consumer
     int mem_fd = 0;
     u32 mem_length = 0;
     T*  elems = nullptr;
-
+    std::string topic_name;
 public:
         
     // this function will open the channel, allocate memory, set the indices, and
@@ -167,19 +168,23 @@ public:
         }
 
         indices->initialize_consumer(cons_index);
+        this->topic_name = topic_name;
 
-        // TODO: Add error if the number of consumers is exceeded
         return NE_SUCCESS;
     }
             
     // Consumer: get a pointer to the next struct from the publisher
-    T* get_slot()
+    T* get_slot(NodeError &result)
     {
         // This call might block
-        // TODO: how to handle multiple consumers?
-        unsigned int elem_index = indices->get_next_full(cons_index);
+        unsigned int elem_index;
+        result = indices->get_next_full(cons_index, elem_index);
         
-        return &elems[elem_index];
+        if (result == NE_SUCCESS) {
+            return &elems[elem_index];
+        }
+        // The most likely problem here is that the producer died, maybe check one day
+        return nullptr;
     }
     
     // Consumer: This function assumes that the image* previously returned will no longer be used

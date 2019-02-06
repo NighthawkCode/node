@@ -24,14 +24,14 @@ int main(int argc, char **argv)
         printf(" - Acquiring data (%d)... ", it);
         fflush(stdout);
         node_msg::image* img = cn.get_slot();
-        printf("Previous valud of rows: %d ", img->rows);
-        img->rows = 3+it;
+        printf("Previous value of rows: %d ", img->rows);
+        img->rows = it;
         img->cols = 3+it;
         img->format = 12;
         img->timestamp = 0;
         for(int i=0; i<256; i++) img->pixels[i] = i*it;
 
-        printf(" publishing data ... ");
+        printf(" publishing data (%d) ... ", it);
         fflush(stdout);
         cn.publish();
         printf(" PUBLISHED!\n");
