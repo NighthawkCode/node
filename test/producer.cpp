@@ -22,7 +22,7 @@ int main(int argc, char **argv)
     // Wait a bit so consumers can attach if needed
     usleep(2000000);
     printf("Now starting publishing\n");
-    for(int it = 0; it < 150; it++) {
+    for(int it = 0; it < 50; it++) {
         printf(" - Acquiring data (%d)... ", it);
         fflush(stdout);
         node_msg::image* img = cn.get_slot();

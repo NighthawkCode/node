@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h> // for usleep
+#include <assert.h>
 #include "image.h"
 #include "channel.h"
 
@@ -32,8 +33,11 @@ int main(int argc, char **argv)
         }
     }
 
+    unsigned int val = 0;
+    bool first_val = false;
+
     printf("Now starting consumer [%d] \n", cn.get_index());
-    for(int it=0; it<150; it++) {
+    for(int it=0; it<50; it++) {
         printf(" - Acquiring data (%d)... ", it);
         fflush(stdout);
         node_msg::image *img = cn.get_slot(res);
@@ -43,6 +47,14 @@ int main(int argc, char **argv)
             break;
         }
         printf("Value of rows: %d ", img->rows);
+        if (!first_val) {
+            val = img->rows;
+            first_val = true;
+        } else {
+            // Very simple way to check that we are receiving in order and not missing
+            assert(img->rows == val +1);
+            val = img->rows;
+        }
         // maybe do something with img here
 //        usleep(500000);
 
