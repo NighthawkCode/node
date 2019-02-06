@@ -131,14 +131,24 @@ int main(int argc, char **argv)
                 reply.msg_hash = inf.message_hash;
                 reply.chn_path = inf.cn_info.channel_path;
                 reply.chn_size = inf.cn_info.channel_size;
+                reply.publisher_pid = inf.publisher_pid;
+                reply.visible  = inf.visible;
             }
         } else if (request.action == node_msg::NUM_TOPICS) {
             reply.status = node_msg::SUCCESS;
-            reply.num_topics = reg.num_topics();
+            if (request.cli == 123) {
+                reply.num_topics = reg.num_topics_cli();
+            } else {
+                reply.num_topics = reg.num_topics();
+            }
             printf(">> Query Num Topics returned %d topics\n", reply.num_topics);
         } else if (request.action == node_msg::TOPIC_AT_INDEX) {
             topic_info inf;
-            ret = reg.get_topic_info(request.topic_index, inf);
+            if (request.cli == 123) {
+                ret = reg.get_topic_info_cli(request.topic_index, inf);
+            } else { 
+                ret = reg.get_topic_info(request.topic_index, inf);
+            }   
             if (!ret) {
                 printf(">> Query Topic by index failed\n");
                 reply.status = node_msg::INDEX_OUT_OF_BOUNDS;
@@ -150,6 +160,8 @@ int main(int argc, char **argv)
                 reply.msg_hash = inf.message_hash;
                 reply.chn_path = inf.cn_info.channel_path;
                 reply.chn_size = inf.cn_info.channel_size;
+                reply.publisher_pid = inf.publisher_pid;
+                reply.visible  = inf.visible;
             }
         } else {
             reply.status = node_msg::REQUEST_INVALID;

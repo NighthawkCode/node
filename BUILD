@@ -17,6 +17,7 @@ cc_library(
     hdrs = [
         "src/channel.h",
         "src/node_registry.h",
+        "src/defer.h",
     ],
     includes = [
         "src",

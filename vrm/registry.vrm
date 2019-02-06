@@ -33,6 +33,7 @@ namespace node_msg
         string  chn_path;
         u32     chn_size;
         u32     publisher_pid;
+        u32     cli; // special control for command line and debug
     }
 
     struct registry_reply
@@ -45,5 +46,6 @@ namespace node_msg
         string  chn_path;
         u32     chn_size;
         u32     publisher_pid;
+        u32     visible;
     }
 }

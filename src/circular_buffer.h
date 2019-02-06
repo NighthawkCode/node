@@ -101,13 +101,22 @@ public:
         }
     }
 
-    unsigned int get_next_full(unsigned int idx)
+    NodeError get_next_full(unsigned int idx, unsigned int &elem_index)
     {
         if (empty_for_this_consumer(idx)) {
             // TODO: Block, add timeout and retry
-            sem_wait(&prod_sem[idx]);
+            struct timespec ts;
+            auto r = clock_gettime(CLOCK_REALTIME, &ts);
+            assert(r != -1);
+            // Wait at most X seconds. Maybe tweak this?
+            ts.tv_sec += 3;
+            sem_timedwait(&prod_sem[idx], &ts);
+            if (empty_for_this_consumer(idx)) {
+                return NE_CONSUMER_TIME_OUT;
+            }
         }
-        return tail_[idx];
+        elem_index = tail_[idx];
+        return NE_SUCCESS;
     }
 
     void release(unsigned int idx)

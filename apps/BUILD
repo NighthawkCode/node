@@ -12,7 +12,7 @@ cc_binary(
 )
 
 cc_binary(
-    name = "nodecli",
+    name = "node",
     srcs = [
         "nodecli.cpp",
         "//:registry.h",
@@ -21,5 +21,6 @@ cc_binary(
     linkopts = ["-lrt", "-lpthread"],
     deps = [
         "@vrm//:vrm_headers",
+        "//:node",
     ]
 )
