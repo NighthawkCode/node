@@ -78,7 +78,7 @@ static const int mem_length = 128 * KB;
 #define BUFFER_SIZE 4096
 #define NODE_REGISTRY_PORT 25678
 
-#define DEBUG 1
+#define DEBUG 0
 
 static const char *RequestTypeToStr[] = {
     "CREATE_TOPIC",
