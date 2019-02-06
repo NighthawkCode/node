@@ -80,7 +80,6 @@ public:
     {
         // This call might block
         unsigned int elem_index = indices->get_next_empty();
-        
         return &elems[elem_index];
     }
     
