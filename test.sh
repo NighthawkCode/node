@@ -70,3 +70,7 @@ if [ "$GOOD" -eq "1" ]; then
 else 
   echo "FAILURE on test"
 fi
+
+
+# clean the nodecore if it is still running
+killall -q nodecore

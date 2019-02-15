@@ -56,7 +56,7 @@ int main(int argc, char **argv)
             val = img->rows;
         }
         // maybe do something with img here
-//        usleep(500000);
+        usleep(5000000);
 
         printf(" releasing data ... ");
         fflush(stdout);
