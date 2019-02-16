@@ -5,4 +5,3 @@ set -e
 bazel build --verbose_failures ...
 
 ./test.sh
-
