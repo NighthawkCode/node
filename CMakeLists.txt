@@ -22,12 +22,21 @@ set( NODE_SRCS
 
 add_custom_command(
     OUTPUT image.h
-    COMMAND ${vrm_BINARY_DIR}/vrm ${CMAKE_CURRENT_SOURCE_DIR}/samples/image.vrm > image.h
+    COMMAND ${vrm_BINARY_DIR}/vrm ${CMAKE_CURRENT_SOURCE_DIR}/vrm/image.vrm > image.h
     DEPENDS vrm ${CMAKE_CURRENT_SOURCE_DIR}/vrm/image.vrm
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
+add_custom_command(
+    OUTPUT registry.h
+    COMMAND ${vrm_BINARY_DIR}/vrm ${CMAKE_CURRENT_SOURCE_DIR}/vrm/registry.vrm > registry.h
+    DEPENDS vrm ${CMAKE_CURRENT_SOURCE_DIR}/vrm/registry.vrm
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+)
 
-add_library( node STATIC ${VRM_SRCS} image.h )
-target_include_directories(node PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src )
-target_link_libraries(node PRIVATE vrm_lib)
+
+
+add_library( node STATIC ${NODE_SRCS} image.h registry.h )
+target_include_directories( node PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src )
+target_include_directories( node PRIVATE ${CMAKE_CURRENT_BINARY_DIR} )
+target_link_libraries( node PRIVATE vrm_lib)
