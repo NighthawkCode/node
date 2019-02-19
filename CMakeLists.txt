@@ -8,11 +8,11 @@ FetchContent_Declare(
     GIT_REPOSITORY "https://git.martian.ag/verdant/vrm.git"
     )
 FetchContent_GetProperties(vrm)
-if(NOT vrm_dep_POPULATED)
+if(NOT vrm_POPULATED)
     execute_process(COMMAND ${CMAKE_COMMAND} -E echo_append "-- Downloading vrm... ")
     FetchContent_Populate(vrm) # does the actual download (I think)
     message(" into ${vrm_SOURCE_DIR}... done. ")
-    add_subdirectory( ${vrm_SOURCE_DIR} ${vrm_dep_BINARY_DIR} )
+    add_subdirectory( ${vrm_SOURCE_DIR} ${vrm_BINARY_DIR} )
 endif()
 
 
@@ -28,8 +28,6 @@ add_custom_command(
 )
 
 
-add_library( node STATIC ${VRM_SRCS} vrm_lib image.h )
+add_library( node STATIC ${VRM_SRCS} image.h )
 target_include_directories(node PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src )
-
-add_library( vrm_lib INTERFACE )
-target_include_directories(vrm_lib INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include )
+target_link_libraries(node PRIVATE vrm_lib)
