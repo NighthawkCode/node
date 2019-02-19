@@ -7,17 +7,17 @@ killall -q cons
 
 rm -f *_log.txt
 
-if [ ! -f bazel-bin/apps/nodecore ]; then
+if [ ! -f build/apps/nodecore ]; then
    echo "nodecore binary could not be found"
    exit 1
 fi 
 
-if [ ! -f bazel-bin/test/prod ]; then
+if [ ! -f build/test/prod ]; then
    echo "prod binary could not be found"
    exit 1
 fi 
 
-if [ ! -f bazel-bin/test/cons ]; then
+if [ ! -f build/test/cons ]; then
    echo "prod binary could not be found"
    exit 1
 fi 
@@ -25,17 +25,17 @@ fi
 
 # Launch our core
 echo "Launching nodecore..."
-bazel-bin/apps/nodecore > core_log.txt 2>&1 & CORE=$!
+build/apps/nodecore > core_log.txt 2>&1 & CORE=$!
 echo "Sleeping for 1 second to ensure the core is up"
 sleep 1
 echo "Launching producer..."
-bazel-bin/test/prod > prod_log.txt 2>&1 & PROD=$!
+build/test/prod > prod_log.txt 2>&1 & PROD=$!
 echo "Launching consumer 1..."
-bazel-bin/test/cons > cons1_log.txt 2>&1 & CONS1=$!
+build/test/cons > cons1_log.txt 2>&1 & CONS1=$!
 echo "Launching consumer 2..."
-bazel-bin/test/cons > cons2_log.txt 2>&1 & CONS2=$!
+build/test/cons > cons2_log.txt 2>&1 & CONS2=$!
 echo "Launching consumer 3..."
-bazel-bin/test/cons > cons3_log.txt 2>&1 & CONS3=$!
+build/test/cons > cons3_log.txt 2>&1 & CONS3=$!
 
 GOOD=1
 

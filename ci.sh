@@ -2,6 +2,11 @@
 # this tells bash to stop the script if anything breaks
 set -e
 
-bazel build --verbose_failures ...
+rm -fr build
+mkdir build
+cd build
+cmake ..
+make
+cd ..
 
 ./test.sh
