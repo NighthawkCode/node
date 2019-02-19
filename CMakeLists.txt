@@ -15,7 +15,6 @@ if(NOT vrm_POPULATED)
     add_subdirectory( ${vrm_SOURCE_DIR} ${vrm_BINARY_DIR} )
 endif()
 
-
 set( NODE_SRCS 
     src/nodelib.cpp src/node_registry.cpp src/process.cpp 
 )
@@ -34,9 +33,10 @@ add_custom_command(
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
+add_library( nodelib STATIC ${NODE_SRCS} image.h registry.h )
+target_include_directories( nodelib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src )
+target_include_directories( nodelib PRIVATE ${CMAKE_CURRENT_BINARY_DIR} )
+target_link_libraries( nodelib PRIVATE vrm_lib)
 
-
-add_library( node STATIC ${NODE_SRCS} image.h registry.h )
-target_include_directories( node PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src )
-target_include_directories( node PRIVATE ${CMAKE_CURRENT_BINARY_DIR} )
-target_link_libraries( node PRIVATE vrm_lib)
+add_subdirectory(apps)
+add_subdirectory(test)

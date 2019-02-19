@@ -11,7 +11,6 @@
 #include <inttypes.h>
 #include "defer.h"
 #include "registry.h"
-#include "image.h"
 #include "nodeerr.h"
 
 #define NODE_REGISTRY_PORT 25678

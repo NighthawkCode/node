@@ -37,7 +37,7 @@ int main(int argc, char **argv)
         fflush(stdout);
         cn.publish();
         printf(" PUBLISHED!\n");
-        usleep(500000);
+        usleep(100000);
     }
 
     return 0;
