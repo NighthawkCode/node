@@ -8,7 +8,7 @@ void* helper_open_channel(const channel_info& info, int& mem_fd);
 void  helper_clean(void *addr, int mem_fd, u32 mem_length);
 
 template< class T>
-class topic_producer
+class publisher
 {
     circular_buffer *indices = nullptr; // Indices should be allocated inside of data... 
     u8* data = nullptr;
@@ -95,7 +95,7 @@ public:
         return true;
     }
 
-    ~topic_producer()
+    ~publisher()
     {
         helper_clean(data, mem_fd, mem_length);
         data = nullptr;
@@ -108,7 +108,7 @@ public:
 
 
 template< class T>
-class topic_consumer
+class subscriber
 {
     circular_buffer *indices = nullptr; // Indices are allocated inside of data
     u32 cons_index = 0; // Indicate which consumer this is, out of multiple in a topic
@@ -203,7 +203,7 @@ public:
         return cons_index;
     }
 
-    ~topic_consumer()
+    ~subscriber()
     {
         helper_clean(data, mem_fd, mem_length);
         data = nullptr;

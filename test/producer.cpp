@@ -6,7 +6,7 @@
 
 int main(int argc, char **argv)
 {
-    topic_producer<node_msg::image> cn;
+    publisher<node_msg::image> cn;
 
     printf("Hello, I am a producer of messages\n");
 

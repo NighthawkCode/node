@@ -7,7 +7,7 @@
 
 int main(int argc, char **argv)
 {
-    topic_consumer<node_msg::image> cn;
+    subscriber<node_msg::image> cn;
 
     printf("Hello, I am a consumer of messages\n");
 
