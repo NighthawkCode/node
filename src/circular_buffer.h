@@ -101,7 +101,7 @@ public:
         }
     }
 
-    NodeError get_next_full(unsigned int idx, unsigned int &elem_index)
+    node::NodeError get_next_full(unsigned int idx, unsigned int &elem_index)
     {
         if (empty_for_this_consumer(idx)) {
             // TODO: Block, add timeout and retry
@@ -112,11 +112,11 @@ public:
             ts.tv_sec += 3;
             sem_timedwait(&prod_sem[idx], &ts);
             if (empty_for_this_consumer(idx)) {
-                return NE_CONSUMER_TIME_OUT;
+                return node::CONSUMER_TIME_OUT;
             }
         }
         elem_index = tail_[idx];
-        return NE_SUCCESS;
+        return node::SUCCESS;
     }
 
     void release(unsigned int idx)

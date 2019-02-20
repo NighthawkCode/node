@@ -25,7 +25,7 @@ int main(int argc, char **argv)
     int addrlen = sizeof(address); 
     char *buffer = new char[BUFFER_SIZE]; 
 
-    node_registry reg;
+    node::node_registry reg;
     printf("Starting server\n");
 
     // Creating socket file descriptor 
@@ -89,7 +89,7 @@ int main(int argc, char **argv)
 
         // TODO: Here we would do internal work for the request, creation, query...
         if (request.action == node_msg::CREATE_TOPIC) {
-            topic_info inf;
+            node::topic_info inf;
             inf.name = request.topic_name;
             inf.message_name = request.msg_name;
             inf.message_hash = request.msg_hash;
@@ -110,7 +110,7 @@ int main(int argc, char **argv)
                 reply.chn_size = request.chn_size;
             }
         } else if (request.action == node_msg::ADVERTISE_TOPIC) {
-            topic_info inf;
+            node::topic_info inf;
             inf.name = request.topic_name;
             // Maybe ensure the pid of the request matches what is stored
             ret = reg.make_topic_visible(inf);
@@ -118,7 +118,7 @@ int main(int argc, char **argv)
             else reply.status = node_msg::TOPIC_NOT_FOUND;
         } else if (request.action == node_msg::TOPIC_BY_NAME) {
             // search topic by name 
-            topic_info inf;
+            node::topic_info inf;
             ret = reg.get_topic_info(request.topic_name, inf);
             if (!ret) {
                 printf(">> Query Topic by name failed\n");
@@ -143,7 +143,7 @@ int main(int argc, char **argv)
             }
             printf(">> Query Num Topics returned %d topics\n", reply.num_topics);
         } else if (request.action == node_msg::TOPIC_AT_INDEX) {
-            topic_info inf;
+            node::topic_info inf;
             if (request.cli == 123) {
                 ret = reg.get_topic_info_cli(request.topic_index, inf);
             } else { 

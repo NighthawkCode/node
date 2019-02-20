@@ -2,18 +2,20 @@
 #include <stdlib.h>
 #include <unistd.h> // for usleep
 #include "image.h"
-#include "channel.h"
+#include "node/core.h"
 
 int main(int argc, char **argv)
 {
-    publisher<node_msg::image> cn;
+    node::core core;
 
     printf("Hello, I am a producer of messages\n");
 
+    auto image_channel = core.provides<node_msg::image>("topic");
+
     // List existing topics
 
-    NodeError res = cn.open_channel("topic");
-    if (res != NE_SUCCESS) {
+    node::NodeError res = image_channel.open();
+    if (res != node::SUCCESS) {
         // TODO: make it so the node server does not need restart
         fprintf(stderr, "Failure to create a topic (%d), maybe you need to restart the node server\n", res);
         return -1;
@@ -25,7 +27,7 @@ int main(int argc, char **argv)
     for(int it = 0; it < 50; it++) {
         printf(" - Acquiring data (%d)... ", it);
         fflush(stdout);
-        node_msg::image* img = cn.get_slot();
+        node_msg::image* img = image_channel.get_slot();
         printf("Previous value of rows: %d ", img->rows);
         img->rows = it;
         img->cols = 3+it;
@@ -35,7 +37,7 @@ int main(int argc, char **argv)
 
         printf(" publishing data (%d) ... ", it);
         fflush(stdout);
-        cn.publish();
+        image_channel.publish( img );
         printf(" PUBLISHED!\n");
         usleep(100000);
     }

@@ -1,8 +1,11 @@
 #pragma once
-#include "mytypes.h"
 #include <string>
+#include "node/nodeerr.h"
+#include "mytypes.h"
 #include "nodelib.h"
 #include "circular_buffer.h"
+
+namespace node {
 
 void* helper_open_channel(const channel_info& info, int& mem_fd);
 void  helper_clean(void *addr, int mem_fd, u32 mem_length);
@@ -15,12 +18,34 @@ class publisher
     int mem_fd = 0;
     u32 mem_length = 0;
     T*  elems = nullptr;
+    std::string topic_name;
 
 public:
+
+    publisher() = default;
         
+    publisher(publisher<T>&& rhs) : topic_name(std::move(rhs.topic_name))
+    {
+        indices = rhs.indices;
+        data = rhs.data;
+        mem_fd = rhs.mem_fd;
+        mem_length = rhs.mem_length;
+        elems = rhs.elems;
+
+        rhs.indices = nullptr;
+        rhs.data = nullptr;
+        rhs.elems = nullptr;
+        rhs.mem_fd = 0;
+    }
+
+    void set_topic_name(const std::string& name)
+    {
+        topic_name = name;
+    }
+    
     // this function will open the channel, allocate memory, set the indices, and
     // do any other needed initialization
-    NodeError open_channel(const std::string &topic_name, int num_elems = 4, unsigned int max_consumers = 5)
+    NodeError open(int num_elems = 4, unsigned int max_consumers = 5)
     {
         NodeError res;
         // Find the registry, inquire about this channel
@@ -28,7 +53,7 @@ public:
         topic_info info;
 
         res = node_lib.open();
-        if (res != NE_SUCCESS) {
+        if (res != SUCCESS) {
             return res;
         }
 
@@ -39,7 +64,7 @@ public:
         }
 
         if (max_consumers >= MAX_CONSUMERS) {
-            return NE_CONSUMER_LIMIT_EXCEEDED;
+            return CONSUMER_LIMIT_EXCEEDED;
         }
 
         info.name = topic_name;
@@ -51,7 +76,7 @@ public:
         info.cn_info.max_consumers = max_consumers;
         info.visible = false;
         res = node_lib.create_topic(info);
-        if (res != NE_SUCCESS) {
+        if (res != SUCCESS) {
             return res;
         }
         printf("New topic created successfully\n");
@@ -60,7 +85,7 @@ public:
         data = (u8 *)helper_open_channel(info.cn_info, mem_fd);
         if (!data) {
             printf("Could not open the shared memory\n");
-            return NE_SHARED_MEMORY_OPEN_ERROR;
+            return SHARED_MEMORY_OPEN_ERROR;
         }
 
         mem_length = info.cn_info.channel_size;
@@ -84,7 +109,7 @@ public:
     }
     
     // Producer: This function assumes that the image* previously returned will no longer be used
-    void publish()
+    void publish( T* elem )
     {
         indices->publish();
     }
@@ -106,7 +131,6 @@ public:
     }
 };
 
-
 template< class T>
 class subscriber
 {
@@ -115,13 +139,35 @@ class subscriber
     u8* data = nullptr;
     int mem_fd = 0;
     u32 mem_length = 0;
-    T*  elems = nullptr;
+    T*  elems = nullptr;  
+
     std::string topic_name;
 public:
-        
+    subscriber() = default;
+
+    subscriber(subscriber<T>&& rhs) : topic_name(std::move(rhs.topic_name))
+    {
+        indices = rhs.indices;
+        cons_index = rhs.cons_index;
+        data = rhs.data;
+        mem_fd = rhs.mem_fd;
+        mem_length = rhs.mem_length;
+        elems = rhs.elems;
+
+        rhs.indices = nullptr;
+        rhs.data = nullptr;
+        rhs.elems = nullptr;
+        rhs.mem_fd = 0;
+    }
+
+    void set_topic_name(const std::string& name)
+    {
+        topic_name = name;
+    }
+
     // this function will open the channel, allocate memory, set the indices, and
     // do any other needed initialization
-    NodeError open_channel(const std::string &topic_name)
+    NodeError open()
     {
         NodeError res;
         // Find the registry, inquire about this channel
@@ -129,17 +175,17 @@ public:
         topic_info info;
 
         res = node_lib.open();
-        if (res != NE_SUCCESS) {
+        if (res != SUCCESS) {
             fprintf(stderr, "Failure to open the node registry\n");
             return res;
         }
 
         res = node_lib.get_topic_info(topic_name, info);
-        if (res != NE_SUCCESS) {
+        if (res != SUCCESS) {
             // Consumer cannot create new topics
             fprintf(stderr, "Failure to find the topic in the node registry\n");
-            if (res == NE_TOPIC_NOT_FOUND) {
-                return NE_PRODUCER_NOT_PRESENT;
+            if (res == TOPIC_NOT_FOUND) {
+                return PRODUCER_NOT_PRESENT;
             }
             return res;
         } 
@@ -148,12 +194,13 @@ public:
         data = (u8 *)helper_open_channel(info.cn_info, mem_fd);
         if (!data) {
             fprintf(stderr, "Failure to open the shared memory\n");
-            return NE_SHARED_MEMORY_OPEN_ERROR;
+            return SHARED_MEMORY_OPEN_ERROR;
         }
 
         mem_length = info.cn_info.channel_size;
 
         printf("Opened channel with %d length, %s path", mem_length, 
+
             info.cn_info.channel_path.c_str());
 
         // do setup of stuff in data now!
@@ -163,13 +210,13 @@ public:
         cons_index = indices->get_cons_number();
 
         if (cons_index >= info.cn_info.max_consumers) {
-            return NE_CONSUMER_LIMIT_EXCEEDED;
+            return CONSUMER_LIMIT_EXCEEDED;
         }
 
         indices->initialize_consumer(cons_index);
         this->topic_name = topic_name;
 
-        return NE_SUCCESS;
+        return SUCCESS;
     }
             
     // Consumer: get a pointer to the next struct from the publisher
@@ -179,7 +226,7 @@ public:
         unsigned int elem_index;
         result = indices->get_next_full(cons_index, elem_index);
         
-        if (result == NE_SUCCESS) {
+        if (result == SUCCESS) {
             return &elems[elem_index];
         }
         // The most likely problem here is that the producer died, maybe check one day
@@ -187,7 +234,7 @@ public:
     }
     
     // Consumer: This function assumes that the image* previously returned will no longer be used
-    void release()
+    void release( T* elem )
     {
         indices->release(cons_index);
     }
@@ -214,3 +261,5 @@ public:
     }
 
 };
+
+}

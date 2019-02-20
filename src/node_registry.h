@@ -3,6 +3,8 @@
 #include "nodelib.h"
 #include <vector>
 
+namespace node {
+
 class node_registry
 {
     std::vector<topic_info> topics;
@@ -32,3 +34,5 @@ public:
     // Find the topic and make it visible
     bool make_topic_visible(const topic_info& info);
 };
+
+}

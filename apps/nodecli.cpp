@@ -11,12 +11,14 @@
 #include <inttypes.h>
 #include "defer.h"
 #include "registry.h"
-#include "nodeerr.h"
+#include "node/nodeerr.h"
 
 #define NODE_REGISTRY_PORT 25678
 #define SERVER_IP          "127.0.0.1"
 
 #define BUFFER_SIZE        8196
+
+using namespace node;
 
 void Usage()
 {
@@ -48,7 +50,7 @@ static NodeError send_request(const std::string &server_ip,
     memset(recvBuffer, 0, BUFFER_SIZE);
     if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         fprintf(stderr, "\n Error : Could not create socket \n");
-        return NE_SOCKET_COULD_NOT_BE_CREATED;
+        return SOCKET_COULD_NOT_BE_CREATED;
     } 
 
     memset(&serv_addr, 0, sizeof(serv_addr)); 
@@ -59,40 +61,40 @@ static NodeError send_request(const std::string &server_ip,
     if(inet_pton(AF_INET, server_ip.c_str(), &serv_addr.sin_addr)<=0) {
         fprintf(stderr, "Seerver ip: %s\n", server_ip.c_str());
         fprintf(stderr, "inet_pton error occured\n");
-        return NE_SOCKET_SERVER_IP_INCORRECT;
+        return SOCKET_SERVER_IP_INCORRECT;
     }
 
     if( connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
     {
         fprintf(stderr, "Node registry server could not be found at %s:%d\n",
             server_ip.c_str(), NODE_REGISTRY_PORT);
-        return NE_SOCKET_SERVER_NOT_FOUND;
+        return SOCKET_SERVER_NOT_FOUND;
     }
 
     size_t enc_size = request.encode_size();
     bool ret = request.encode(sendBuffer, BUFFER_SIZE);
     if (!ret) {
         fprintf(stderr, "Error encoding\n");
-        return NE_IDL_ENCODE_ERROR;
+        return IDL_ENCODE_ERROR;
     }
     n = write(sockfd, sendBuffer, enc_size);
     if (n != (ssize_t)enc_size) {
         fprintf(stderr, "Error sending request, wanted to send %ld bytes but only sent %d bytes\n", enc_size, n);
-        return NE_SOCKET_WRITE_ERROR;
+        return SOCKET_WRITE_ERROR;
     }
 
     n = read(sockfd, recvBuffer, BUFFER_SIZE-1);
     if (n <= 0) {
         fprintf(stderr, "Error receiving a reply\n");
-        return NE_SOCKET_REPLY_ERROR;
+        return SOCKET_REPLY_ERROR;
     }
     ret = reply.decode(recvBuffer, n);
     if (!ret) {
         fprintf(stderr, "Error decoding the received reply\n");
-        return NE_IDL_DECODE_ERROR;
+        return IDL_DECODE_ERROR;
     }
 
-    return NE_SUCCESS;
+    return SUCCESS;
 }
 
 
@@ -111,7 +113,7 @@ bool DoListTopics(std::string &server_ip)
     req.action = node_msg::NUM_TOPICS;
     req.cli = 123;
     res = send_request(server_ip, req, reply);
-    if (res != NE_SUCCESS) {
+    if (res != SUCCESS) {
         printf("Error on communication: %d\n", res);
         return false;
     }
@@ -125,7 +127,7 @@ bool DoListTopics(std::string &server_ip)
         req.action = node_msg::TOPIC_AT_INDEX;
         req.cli = 123;
         res = send_request(server_ip, req, reply);
-        if (res != NE_SUCCESS) {
+        if (res != SUCCESS) {
             printf("Error on communication: %d\n", res);
             return false;
         }

@@ -16,7 +16,7 @@ if(NOT cbuf_POPULATED)
 endif()
 
 set( NODE_SRCS 
-    src/nodelib.cpp src/node_registry.cpp src/process.cpp 
+    src/nodelib.cpp src/node_registry.cpp src/process.cpp src/core.cpp
 )
 
 add_custom_command(
@@ -34,7 +34,11 @@ add_custom_command(
 )
 
 add_library( nodelib STATIC ${NODE_SRCS} image.h registry.h )
-target_include_directories( nodelib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src )
+target_include_directories( nodelib 
+    PUBLIC 
+        ${CMAKE_CURRENT_SOURCE_DIR}/src 
+        ${CMAKE_CURRENT_SOURCE_DIR}/include 
+    )
 target_include_directories( nodelib PRIVATE ${CMAKE_CURRENT_BINARY_DIR} )
 target_link_libraries( nodelib PRIVATE cbuf_lib)
 

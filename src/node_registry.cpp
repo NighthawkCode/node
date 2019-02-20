@@ -1,6 +1,8 @@
 #include "node_registry.h"
 #include "process.h"
 
+namespace node {
+
 u32 node_registry::num_topics()
 {
     u32 number = 0;
@@ -89,3 +91,4 @@ bool node_registry::get_topic_info(const std::string& name, topic_info& info)
     return false;
 }
 
+}

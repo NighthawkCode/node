@@ -1,7 +1,9 @@
 #pragma once
 #include "mytypes.h"
-#include "nodeerr.h"
+#include "node/nodeerr.h"
 #include <string>
+
+namespace node {
 
 // A channel is identified by a string (like a topic), and the type of messages on it (string, hash)
 // channel messages are decoded
@@ -48,3 +50,5 @@ public:
 
     NodeError make_topic_visible(const std::string& name);
 };
+
+}

@@ -117,6 +117,8 @@ void printReply(const node_msg::registry_reply& reply)
     printf("  Chn size: %d\n", reply.chn_size);
 }
 
+namespace node {
+
 static NodeError send_request(const std::string &server_ip, 
                          node_msg::registry_request &request, 
                          node_msg::registry_reply &reply)
@@ -137,7 +139,7 @@ static NodeError send_request(const std::string &server_ip,
     memset(recvBuffer, 0, BUFFER_SIZE);
     if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         fprintf(stderr, "\n Error : Could not create socket \n");
-        return NE_SOCKET_COULD_NOT_BE_CREATED;
+        return SOCKET_COULD_NOT_BE_CREATED;
     } 
 
     memset(&serv_addr, 0, sizeof(serv_addr)); 
@@ -148,40 +150,40 @@ static NodeError send_request(const std::string &server_ip,
     if(inet_pton(AF_INET, server_ip.c_str(), &serv_addr.sin_addr)<=0) {
         fprintf(stderr, "Seerver ip: %s\n", server_ip.c_str());
         fprintf(stderr, "inet_pton error occured\n");
-        return NE_SOCKET_SERVER_IP_INCORRECT;
+        return SOCKET_SERVER_IP_INCORRECT;
     }
 
     if( connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
     {
         fprintf(stderr, "Node registry server could not be found at %s:%d\n",
             server_ip.c_str(), NODE_REGISTRY_PORT);
-        return NE_SOCKET_SERVER_NOT_FOUND;
+        return SOCKET_SERVER_NOT_FOUND;
     }
 
     size_t enc_size = request.encode_size();
     bool ret = request.encode(sendBuffer, BUFFER_SIZE);
     if (!ret) {
         fprintf(stderr, "Error encoding\n");
-        return NE_IDL_ENCODE_ERROR;
+        return IDL_ENCODE_ERROR;
     }
     n = write(sockfd, sendBuffer, enc_size);
     if (n != (ssize_t)enc_size) {
         fprintf(stderr, "Error sending request, wanted to send %ld bytes but only sent %d bytes\n", enc_size, n);
-        return NE_SOCKET_WRITE_ERROR;
+        return SOCKET_WRITE_ERROR;
     }
 
     n = read(sockfd, recvBuffer, BUFFER_SIZE-1);
     if (n <= 0) {
         fprintf(stderr, "Error receiving a reply\n");
-        return NE_SOCKET_REPLY_ERROR;
+        return SOCKET_REPLY_ERROR;
     }
     ret = reply.decode(recvBuffer, n);
     if (!ret) {
         fprintf(stderr, "Error decoding the received reply\n");
-        return NE_IDL_DECODE_ERROR;
+        return IDL_DECODE_ERROR;
     }
 
-    return NE_SUCCESS;
+    return SUCCESS;
 }
 
 NodeError nodelib::open(const std::string& host)
@@ -228,7 +230,7 @@ u32 nodelib::num_channels()
 
     req.action = node_msg::NUM_TOPICS;
     auto ret = send_request(hostname, req, reply);    
-    if (ret != NE_SUCCESS) {
+    if (ret != SUCCESS) {
         return 0;
     }
     return reply.num_topics;
@@ -239,16 +241,16 @@ static NodeError RequestStatusToNodeError(const node_msg::RequestStatus st)
     switch (st)
     {
         case node_msg::SUCCESS:
-            return NE_SUCCESS;
+            return SUCCESS;
         case node_msg::TOPIC_NOT_FOUND:
-            return NE_TOPIC_NOT_FOUND;
+            return TOPIC_NOT_FOUND;
         case node_msg::INDEX_OUT_OF_BOUNDS:
-            return NE_INDEX_OUT_OF_BOUNDS;
+            return INDEX_OUT_OF_BOUNDS;
         case node_msg::REQUEST_INVALID:        
-            return NE_SERVER_INCOMPATIBLE;
+            return SERVER_INCOMPATIBLE;
         case node_msg::GENERIC_ERROR:
         default:
-            return NE_GENERIC_ERROR;
+            return GENERIC_ERROR;
     }
 }
 
@@ -263,7 +265,7 @@ NodeError nodelib::get_topic_info(u32 channel_index, topic_info& info)
     req.action = node_msg::TOPIC_AT_INDEX;
     req.topic_index = channel_index;    
     auto ret = send_request(hostname, req, reply);    
-    if (ret != NE_SUCCESS) return ret;
+    if (ret != SUCCESS) return ret;
 
     if (reply.status != node_msg::SUCCESS) {
         return RequestStatusToNodeError(reply.status);
@@ -274,7 +276,7 @@ NodeError nodelib::get_topic_info(u32 channel_index, topic_info& info)
     info.message_hash = reply.msg_hash;
     info.cn_info.channel_path = reply.chn_path;
     info.cn_info.channel_size = reply.chn_size;
-    return NE_SUCCESS;
+    return SUCCESS;
 }
 
 NodeError nodelib::make_topic_visible(const std::string& name)
@@ -285,13 +287,13 @@ NodeError nodelib::make_topic_visible(const std::string& name)
     req.action = node_msg::ADVERTISE_TOPIC;
     req.topic_name = name;   
     auto ret = send_request(hostname, req, reply);    
-    if (ret != NE_SUCCESS) return ret;
+    if (ret != SUCCESS) return ret;
 
     if (reply.status != node_msg::SUCCESS) {
         return RequestStatusToNodeError(reply.status);
     }
 
-    return NE_SUCCESS;
+    return SUCCESS;
 }
 
 // Create a new channel on the system, with the information on info
@@ -310,14 +312,14 @@ NodeError nodelib::create_topic(const topic_info& info)
     req.publisher_pid = get_my_pid();
 
     auto ret = send_request(hostname, req, reply);    
-    if (ret != NE_SUCCESS) {
+    if (ret != SUCCESS) {
         // Communication error
 //        printf("Communication error on send_request\n");
         return ret;
     }
     if (reply.status == node_msg::SUCCESS) {
 //        printf("Create topic succeeded\n");
-        return NE_SUCCESS;
+        return SUCCESS;
     } else {
 //        printf("Create topic failed\n");
         return RequestStatusToNodeError(reply.status);
@@ -335,7 +337,7 @@ NodeError nodelib::get_topic_info(const std::string& name, topic_info& info)
     req.topic_name = name;
 
     auto ret = send_request(hostname, req, reply);    
-    if (ret != NE_SUCCESS) return ret;
+    if (ret != SUCCESS) return ret;
 
     if (reply.status != node_msg::SUCCESS) {
         return RequestStatusToNodeError(reply.status);
@@ -346,7 +348,7 @@ NodeError nodelib::get_topic_info(const std::string& name, topic_info& info)
     info.message_hash = reply.msg_hash;
     info.cn_info.channel_path = reply.chn_path;
     info.cn_info.channel_size = reply.chn_size;
-    return NE_SUCCESS;
+    return SUCCESS;
 }
 
 /// This function is meant to create the shared memory for a shm_channel
@@ -380,3 +382,4 @@ void helper_clean(void *addr, int mem_fd, u32 mem_length)
     }
 }
 
+}
