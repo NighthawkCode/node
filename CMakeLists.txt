@@ -5,7 +5,7 @@ project( node )
 include(FetchContent)
 FetchContent_Declare(
     cbuf
-    GIT_REPOSITORY "https://git.martian.ag/verdant/cbuf.git"
+    GIT_REPOSITORY "https://git-shared.martian.ag/shared/cbuf.git"
     )
 FetchContent_GetProperties(cbuf)
 if(NOT cbuf_POPULATED)
@@ -41,6 +41,6 @@ target_include_directories( nodelib
     )
 target_include_directories( nodelib PRIVATE ${CMAKE_CURRENT_BINARY_DIR} )
 target_link_libraries( nodelib PRIVATE cbuf_lib)
-
+set_target_properties( nodelib PROPERTIES CXX_STANDARD 17 )
 add_subdirectory(apps)
 add_subdirectory(test)
