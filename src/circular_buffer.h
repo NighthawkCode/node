@@ -4,6 +4,7 @@
 #include <semaphore.h>
 
 #define MAX_CONSUMERS 10
+#define VERBOSE_DEBUG 0
 
 // This class expects to be allocated on shared memory 
 class circular_buffer
@@ -20,6 +21,14 @@ class circular_buffer
     sem_t        cons_sem[MAX_CONSUMERS]; 
 
 public:
+    void print_state()
+    {
+#if VERBOSE_DEBUG
+        printf("\nnum_cons: %d head: %d tail [%d %d %d] valid [%d %d %d] full [%d %d %d]\n",
+            num_cons, head_, tail_[0], tail_[1], tail_[2], 
+            valid[0], valid[1], valid[2], full_[0], full_[1], full_[2]);
+#endif        
+    }
 
     unsigned int inc(unsigned int v) const
     {
@@ -80,30 +89,50 @@ public:
     /// This function blocks if the buffer is full
     unsigned int get_next_empty()
     {
+        print_state();
         for(int i=0; i<MAX_CONSUMERS; i++) {
             if (valid[i] && full_[i]) {
+#if VERBOSE_DEBUG
+                printf("get_next_empty waiting for cons %d\n", i);
+#endif                                
                 sem_wait(&cons_sem[i]);
             }
         }
+#if VERBOSE_DEBUG
+        printf("Get empty index: %d\n", head_);
+#endif                                        
         return head_;
     }
 
     /// This function will add an item at the top
     void publish()
     {
+#if VERBOSE_DEBUG
+        printf("Publish index: %d\n", head_);
+#endif                                        
         head_ = (head_ + 1) % buf_size;
         // Update full, see if tail and head meet
         for(int i=0; i<MAX_CONSUMERS; i++) {
             if (valid[i]) {
                 full_[i] = (head_ == tail_[i]);
-                sem_post(&prod_sem[i]);
+                if (full_[i]) {
+#if VERBOSE_DEBUG
+                    printf("Mark consumer %d as full\n", i);
+#endif                                        
+                    sem_post(&prod_sem[i]);
+                }
             }
         }
+        print_state();
     }
 
     node::NodeError get_next_full(unsigned int idx, unsigned int &elem_index)
     {
+        print_state();
         if (empty_for_this_consumer(idx)) {
+#if VERBOSE_DEBUG
+            printf("get_next_full waiting for producer\n");
+#endif                                
             // TODO: Block, add timeout and retry
             struct timespec ts;
             auto r = clock_gettime(CLOCK_REALTIME, &ts);
@@ -116,11 +145,18 @@ public:
             }
         }
         elem_index = tail_[idx];
+#if VERBOSE_DEBUG
+        printf("Getting index: %d\n", elem_index);
+#endif                                        
         return node::SUCCESS;
     }
 
     void release(unsigned int idx)
     {
+#if VERBOSE_DEBUG
+        printf("Releasing index: %d\n", tail_[idx]);
+#endif                                        
+        print_state();
         full_[idx] = false;
         tail_[idx] = inc(tail_[idx]);
         sem_post(&cons_sem[idx]);

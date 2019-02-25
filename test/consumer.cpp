@@ -38,7 +38,7 @@ int main(int argc, char **argv)
     unsigned int val = 0;
     bool first_val = false;
 
-    printf("Now starting consumer [%d] \n", image_channel.get_index());
+    printf("Now starting consumer [%d] \n", image_channel.get_index()); fflush(stdout);
     for(int it=0; it<50; it++) {
         printf(" - Acquiring data (%d)... ", it);
         fflush(stdout);
@@ -48,11 +48,13 @@ int main(int argc, char **argv)
             printf(" No data received in a while, terminating ...\n");
             break;
         }
-        printf("Value of rows: %d ", img->rows);
+        printf("Value of rows: %d (expected %d) ", img->rows, val+1);
+        fflush(stdout);
         if (!first_val) {
             val = img->rows;
             first_val = true;
         } else {
+            
             // Very simple way to check that we are receiving in order and not missing
             assert(img->rows == val +1);
             val = img->rows;

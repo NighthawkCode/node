@@ -17,6 +17,18 @@
 void printRequest(const node_msg::registry_request& request);
 void printReply(const node_msg::registry_reply& reply);
 
+static void TopicInfoToReply(const node::topic_info &inf, node_msg::registry_reply& reply)
+{
+    reply.topic_name = inf.name;
+    reply.msg_name = inf.message_name;
+    reply.msg_hash = inf.message_hash;
+    reply.chn_path = inf.cn_info.channel_path;
+    reply.chn_size = inf.cn_info.channel_size;
+    reply.max_consumers = inf.cn_info.max_consumers;
+    reply.publisher_pid = inf.publisher_pid;
+    reply.visible  = inf.visible;
+}
+
 int main(int argc, char **argv)
 {
     int server_fd, valread; 
@@ -95,6 +107,7 @@ int main(int argc, char **argv)
             inf.message_hash = request.msg_hash;
             inf.cn_info.channel_path = request.chn_path;
             inf.cn_info.channel_size = request.chn_size;
+            inf.cn_info.max_consumers = request.max_consumers;
             inf.publisher_pid = request.publisher_pid;
             ret = reg.create_topic(inf);
             if (!ret) {
@@ -126,13 +139,7 @@ int main(int argc, char **argv)
             } else {
                 printf(">> Query Topic by name succeeded\n");
                 reply.status = node_msg::SUCCESS;
-                reply.topic_name = inf.name;
-                reply.msg_name = inf.message_name;
-                reply.msg_hash = inf.message_hash;
-                reply.chn_path = inf.cn_info.channel_path;
-                reply.chn_size = inf.cn_info.channel_size;
-                reply.publisher_pid = inf.publisher_pid;
-                reply.visible  = inf.visible;
+                TopicInfoToReply(inf, reply);
             }
         } else if (request.action == node_msg::NUM_TOPICS) {
             reply.status = node_msg::SUCCESS;
@@ -155,13 +162,7 @@ int main(int argc, char **argv)
             } else {
                 printf(">> Query Topic by index succeeded\n");
                 reply.status = node_msg::SUCCESS;
-                reply.topic_name = inf.name;
-                reply.msg_name = inf.message_name;
-                reply.msg_hash = inf.message_hash;
-                reply.chn_path = inf.cn_info.channel_path;
-                reply.chn_size = inf.cn_info.channel_size;
-                reply.publisher_pid = inf.publisher_pid;
-                reply.visible  = inf.visible;
+                TopicInfoToReply(inf, reply);
             }
         } else {
             reply.status = node_msg::REQUEST_INVALID;

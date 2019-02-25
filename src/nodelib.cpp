@@ -276,6 +276,7 @@ NodeError nodelib::get_topic_info(u32 channel_index, topic_info& info)
     info.message_hash = reply.msg_hash;
     info.cn_info.channel_path = reply.chn_path;
     info.cn_info.channel_size = reply.chn_size;
+    info.cn_info.max_consumers = reply.max_consumers;
     return SUCCESS;
 }
 
@@ -309,6 +310,7 @@ NodeError nodelib::create_topic(const topic_info& info)
     req.msg_name = info.message_name;
     req.chn_path = info.cn_info.channel_path;
     req.chn_size = info.cn_info.channel_size;
+    req.max_consumers = info.cn_info.max_consumers;
     req.publisher_pid = get_my_pid();
 
     auto ret = send_request(hostname, req, reply);    
@@ -348,6 +350,7 @@ NodeError nodelib::get_topic_info(const std::string& name, topic_info& info)
     info.message_hash = reply.msg_hash;
     info.cn_info.channel_path = reply.chn_path;
     info.cn_info.channel_size = reply.chn_size;
+    info.cn_info.max_consumers = reply.max_consumers;
     return SUCCESS;
 }
 

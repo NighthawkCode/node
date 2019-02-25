@@ -77,7 +77,7 @@ bool node_registry::make_topic_visible(const topic_info& info)
 
 bool node_registry::get_topic_info(const std::string& name, topic_info& info)
 {
-    for(auto t: topics) {
+    for(auto& t: topics) {
         if (t.visible && t.name == name) {
             if (is_pid_alive(t.publisher_pid)) {
                 info = t;

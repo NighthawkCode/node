@@ -23,8 +23,9 @@ class publisher
 public:
 
     publisher() = default;
+    publisher(const std::string& topic_name) : topic_name(topic_name) {}
         
-    publisher(publisher<T>&& rhs) : topic_name(std::move(rhs.topic_name))
+    publisher(publisher<T>&& rhs) :topic_name(std::move(rhs.topic_name))
     {
         indices = rhs.indices;
         data = rhs.data;
@@ -199,7 +200,7 @@ public:
 
         mem_length = info.cn_info.channel_size;
 
-        printf("Opened channel with %d length, %s path", mem_length, 
+        printf("Opened channel with %d length, %s path\n", mem_length, 
 
             info.cn_info.channel_path.c_str());
 
@@ -209,12 +210,14 @@ public:
 
         cons_index = indices->get_cons_number();
 
+        printf("Got consumer index: %d, limit: %d\n", cons_index,
+            info.cn_info.max_consumers); fflush(stdout);
+
         if (cons_index >= info.cn_info.max_consumers) {
             return CONSUMER_LIMIT_EXCEEDED;
         }
 
         indices->initialize_consumer(cons_index);
-        this->topic_name = topic_name;
 
         return SUCCESS;
     }

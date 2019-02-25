@@ -39,7 +39,7 @@ int main(int argc, char **argv)
         fflush(stdout);
         image_channel.publish( img );
         printf(" PUBLISHED!\n");
-        usleep(100000);
+        usleep(1000000);
     }
 
     return 0;
