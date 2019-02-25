@@ -27,7 +27,7 @@ int main(int argc, char **argv)
     for(int it = 0; it < 50; it++) {
         printf(" - Acquiring data (%d)... ", it);
         fflush(stdout);
-        node_msg::image* img = image_channel.get_slot();
+        node_msg::image* img = image_channel.prepare_message();
         printf("Previous value of rows: %d ", img->rows);
         img->rows = it;
         img->cols = 3+it;
@@ -37,7 +37,7 @@ int main(int argc, char **argv)
 
         printf(" publishing data (%d) ... ", it);
         fflush(stdout);
-        image_channel.publish( img );
+        image_channel.transmit_message( img );
         printf(" PUBLISHED!\n");
         usleep(1000000);
     }

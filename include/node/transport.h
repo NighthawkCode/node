@@ -102,7 +102,7 @@ public:
     }
         
     // Producer: get a pointer to a struct to fill
-    T* get_slot()
+    T* prepare_message()
     {
         // This call might block
         unsigned int elem_index = indices->get_next_empty();
@@ -110,7 +110,7 @@ public:
     }
     
     // Producer: This function assumes that the image* previously returned will no longer be used
-    void publish( T* elem )
+    void transmit_message( T* elem )
     {
         indices->publish();
     }
@@ -223,7 +223,7 @@ public:
     }
             
     // Consumer: get a pointer to the next struct from the publisher
-    T* get_slot(NodeError &result)
+    T* get_message(NodeError &result)
     {
         // This call might block
         unsigned int elem_index;
@@ -237,7 +237,7 @@ public:
     }
     
     // Consumer: This function assumes that the image* previously returned will no longer be used
-    void release( T* elem )
+    void release_message( T* elem )
     {
         indices->release(cons_index);
     }
