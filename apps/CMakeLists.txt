@@ -15,8 +15,8 @@ endif()
 
 add_custom_command(
     OUTPUT registry.h
-    COMMAND ${cbuf_BINARY_DIR}/cbuf ${CMAKE_SOURCE_DIR}/cbuf/registry.cbuf > registry.h
-    DEPENDS cbuf ${CMAKE_SOURCE_DIR}/cbuf/registry.cbuf
+    COMMAND ${cbuf_BINARY_DIR}/cbuf ${CMAKE_CURRENT_SOURCE_DIR}/../cbuf/registry.cbuf > registry.h
+    DEPENDS cbuf ${CMAKE_CURRENT_SOURCE_DIR}/../cbuf/registry.cbuf
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
