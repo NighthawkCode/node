@@ -15,8 +15,8 @@ endif()
 
 add_custom_command(
     OUTPUT image.h
-    COMMAND ${cbuf_BINARY_DIR}/cbuf ${CMAKE_SOURCE_DIR}/cbuf/image.cbuf > image.h
-    DEPENDS cbuf ${CMAKE_SOURCE_DIR}/cbuf/image.cbuf
+    COMMAND ${cbuf_BINARY_DIR}/cbuf ${CMAKE_CURRENT_SOURCE_DIR}/../cbuf/image.cbuf > image.h
+    DEPENDS cbuf ${CMAKE_CURRENT_SOURCE_DIR}/../cbuf/image.cbuf
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
