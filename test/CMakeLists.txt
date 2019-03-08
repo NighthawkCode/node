@@ -1,17 +1,20 @@
 cmake_minimum_required( VERSION 3.2.0 )
 
-include(FetchContent)
-FetchContent_Declare(
-    cbuf
-    GIT_REPOSITORY "https://git.martian.ag/verdant/cbuf.git"
-    )
-FetchContent_GetProperties(cbuf)
-if(NOT cbuf_POPULATED)
-    execute_process(COMMAND ${CMAKE_COMMAND} -E echo_append "-- Downloading cbuf... ")
-    FetchContent_Populate(cbuf) # does the actual download (I think)
-    message(" into ${cbuf_SOURCE_DIR}... done. ")
-    add_subdirectory( ${cbuf_SOURCE_DIR} ${cbuf_BINARY_DIR} )
-endif()
+macro( fetch_dependency target url tag  )
+  include(FetchContent)
+  if( NOT TARGET ${target})
+    FetchContent_Declare( ${target} GIT_REPOSITORY ${url} )
+    FetchContent_GetProperties( ${target} )
+    if( NOT ${target}_POPULATED )
+      execute_process(COMMAND ${CMAKE_COMMAND} -E echo_append "-- Downloading ${target} ")
+      FetchContent_Populate( ${target} )
+      message( "into ${${target}_SOURCE_DIR}... done." )
+      add_subdirectory( ${${target}_SOURCE_DIR}  ${${target}_BINARY_DIR} )
+    endif()
+  endif()
+endmacro()
+
+fetch_dependency( cbuf "https://git-shared.martian.ag/shared/cbuf.git" "master" )
 
 add_custom_command(
     OUTPUT image.h
