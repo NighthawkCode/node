@@ -129,8 +129,8 @@ static NodeError send_request(const std::string &server_ip,
     struct sockaddr_in serv_addr; 
 
     DEFER( close(sockfd) );
-    DEFER( delete sendBuffer );
-    DEFER( delete recvBuffer );
+    DEFER( delete[] sendBuffer );
+    DEFER( delete[] recvBuffer );
 
 #if DEBUG
     printRequest(request);
