@@ -44,8 +44,8 @@ static NodeError send_request(const std::string &server_ip,
     struct sockaddr_in serv_addr; 
 
     DEFER( close(sockfd) );
-    DEFER( delete sendBuffer );
-    DEFER( delete recvBuffer );
+    DEFER( delete[] sendBuffer );
+    DEFER( delete[] recvBuffer );
 
     memset(recvBuffer, 0, BUFFER_SIZE);
     if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
