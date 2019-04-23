@@ -24,7 +24,7 @@ macro( fetch_dependency target url tag  )
   endif()
 endmacro()
 
-fetch_dependency( cbuf "https://git-shared.martian.ag/shared/cbuf.git" "master" )
+fetch_dependency( cbuf "https://git.martian.ag/open-source/cbuf.git" "master" )
 
 set( NODE_SRCS 
     src/nodelib.cpp src/node_registry.cpp src/process.cpp src/core.cpp
