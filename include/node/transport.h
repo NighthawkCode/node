@@ -3,6 +3,7 @@
 #include "node/nodeerr.h"
 #include "mytypes.h"
 #include "nodelib.h"
+#include "hailer.h"
 #include "circular_buffer.h"
 
 namespace node {
@@ -19,10 +20,10 @@ class publisher
     u32 mem_length = 0;
     T*  elems = nullptr;
     std::string topic_name;
+    const hailer& hail = get_hailer();
 
 public:
-
-    publisher() = default;
+    publisher() = default; 
     publisher(const std::string& topic_name) : topic_name(topic_name) {}
         
     publisher(publisher<T>&& rhs) :topic_name(std::move(rhs.topic_name))

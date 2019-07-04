@@ -9,9 +9,14 @@ include(FetchDependency)
 fetch_dependency( vlog "https://git.martian.ag/open-source/vlog.git" "master" )
 fetch_dependency( cbuf "https://git.martian.ag/open-source/cbuf.git" "master" )
 
-set( NODE_SRCS 
-    src/nodelib.cpp src/node_registry.cpp src/process.cpp src/core.cpp
-)
+set( NODE_SRCS
+    src/nodecore.cpp
+    src/nodelib.cpp 
+    src/node_registry.cpp 
+    src/process.cpp 
+    src/core.cpp
+    src/hailer.cpp
+    src/responder.cpp )
 
 include(BuildCbuf)
 build_cbuf( cbuf/image.cbuf )
@@ -31,6 +36,7 @@ build_cbuf( cbuf/registry.cbuf )
 #    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 #)
 
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_library( nodelib STATIC ${NODE_SRCS} cbuf/image.h cbuf/registry.h )
 target_include_directories( nodelib 
     PUBLIC 
