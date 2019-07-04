@@ -119,7 +119,7 @@ void printReply(const node_msg::registry_reply& reply)
 
 namespace node {
 
-static NodeError send_request(const std::string &server_ip, 
+NodeError send_request(const std::string &server_ip, 
                          node_msg::registry_request &request, 
                          node_msg::registry_reply &reply)
 {

@@ -8,9 +8,13 @@ int main(int argc, char **argv)
 {
     node::core core;
 
-    printf("Hello, I am a producer of messages\n");
+    const char* topic = "topic";
+    if( argc == 2 ) {
+        topic = argv[1];
+    }
+    printf("Hello, I am a producer of messages. I will publish topic: %s\n", topic );
 
-    auto image_channel = core.provides<node_msg::image>("topic");
+    auto image_channel = core.provides<node_msg::image>(topic);
 
     // List existing topics
 
@@ -44,3 +48,4 @@ int main(int argc, char **argv)
 
     return 0;
 }
+
