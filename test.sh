@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # makesure we are running on a clean system
-killall -q nodecore 
+killall -q nodesrv 
 killall -q prod
 killall -q cons
 
 rm -f *_log.txt
 
-if [ ! -f build/apps/nodecore ]; then
-   echo "nodecore binary could not be found"
+if [ ! -f build/apps/nodesrv ]; then
+   echo "nodesrv binary could not be found"
    exit 1
 fi 
 
@@ -24,9 +24,9 @@ fi
 
 
 # Launch our core
-echo "Launching nodecore..."
-build/apps/nodecore > core_log.txt 2>&1 & CORE=$!
-echo "Sleeping for 1 second to ensure the core is up"
+echo "Launching nodesrv..."
+build/apps/nodesrv > server_log.txt 2>&1 & CORE=$!
+echo "Sleeping for 1 second to ensure the server is up"
 sleep 1
 echo "Launching producer..."
 build/test/prod > prod_log.txt 2>&1 & PROD=$!
@@ -73,4 +73,4 @@ fi
 
 
 # clean the nodecore if it is still running
-killall -q nodecore
+killall -q nodesrv
