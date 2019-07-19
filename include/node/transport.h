@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <unistd.h>
 #include "node/nodeerr.h"
 #include "mytypes.h"
 #include "nodelib.h"
@@ -38,6 +39,23 @@ public:
         rhs.data = nullptr;
         rhs.elems = nullptr;
         rhs.mem_fd = 0;
+    }
+
+    publisher &operator=(publisher<T>&& rhs) 
+    {
+        topic_name = std::move(rhs.topic_name);
+        indices = rhs.indices;
+        data = rhs.data;
+        mem_fd = rhs.mem_fd;
+        mem_length = rhs.mem_length;
+        elems = rhs.elems;
+
+        rhs.indices = nullptr;
+        rhs.data = nullptr;
+        rhs.elems = nullptr;
+        rhs.mem_fd = 0;
+
+        return *this;
     }
 
     void set_topic_name(const std::string& name)
@@ -133,6 +151,11 @@ public:
     }
 };
 
+// Constants for subscriber::open()
+constexpr float NODE_WAIT_FOREVER = -1.0;        // Retry indefinitely
+constexpr float NODE_NO_RETRY = 0.0;             // Fail if producer not ready
+constexpr float NODE_DEFAULT_RETRY_SECS = 2.0;   // Default retry duration
+
 template< class T>
 class subscriber
 {
@@ -162,6 +185,24 @@ public:
         rhs.mem_fd = 0;
     }
 
+    subscriber &operator=(subscriber<T>&& rhs) 
+    {
+        topic_name = std::move(rhs.topic_name);
+        indices = rhs.indices;
+        cons_index = rhs.cons_index;
+        data = rhs.data;
+        mem_fd = rhs.mem_fd;
+        mem_length = rhs.mem_length;
+        elems = rhs.elems;
+
+        rhs.indices = nullptr;
+        rhs.data = nullptr;
+        rhs.elems = nullptr;
+        rhs.mem_fd = 0;
+
+        return *this;
+    }
+
     void set_topic_name(const std::string& name)
     {
         topic_name = name;
@@ -169,7 +210,8 @@ public:
 
     // this function will open the channel, allocate memory, set the indices, and
     // do any other needed initialization
-    NodeError open()
+    NodeError open(float timeout_sec = NODE_WAIT_FOREVER,
+                   float retry_delay_sec = NODE_DEFAULT_RETRY_SECS)
     {
         NodeError res;
         // Find the registry, inquire about this channel
@@ -178,32 +220,47 @@ public:
 
         res = node_lib.open();
         if (res != SUCCESS) {
-            fprintf(stderr, "Failure to open the node registry\n");
+            fprintf(stderr, "Failure to open the node registry for topic %s\n",
+                    topic_name.c_str());
             return res;
         }
 
         res = node_lib.get_topic_info(topic_name, info);
+        if (res == TOPIC_NOT_FOUND && timeout_sec != NODE_NO_RETRY) {
+          float remaining_sec = timeout_sec;
+          printf("Topic %s not found.  Retrying.", topic_name.c_str());
+          while (res == TOPIC_NOT_FOUND &&
+                 (timeout_sec == NODE_WAIT_FOREVER || remaining_sec > 0)) {
+            printf(".");
+            fflush(stdout);
+            usleep(static_cast<useconds_t>(retry_delay_sec*1e6));
+            remaining_sec -= retry_delay_sec;
+            res = node_lib.get_topic_info(topic_name, info);
+          }
+          printf("\n");
+        }
         if (res != SUCCESS) {
-            // Consumer cannot create new topics
-            fprintf(stderr, "Failure to find the topic in the node registry\n");
-            if (res == TOPIC_NOT_FOUND) {
-                return PRODUCER_NOT_PRESENT;
-            }
-            return res;
+          // Consumer cannot create new topics
+          fprintf(stderr, "Failure to find the topic %s in the node registry\n",
+                  topic_name.c_str());
+          if (res == TOPIC_NOT_FOUND) {
+            return PRODUCER_NOT_PRESENT;
+          }
+          return res;
         } 
         
         // Now we have the topic info on info
         data = (u8 *)helper_open_channel(info.cn_info, mem_fd);
         if (!data) {
-            fprintf(stderr, "Failure to open the shared memory\n");
+            fprintf(stderr, "Failure to open the shared memory for topic %s\n",
+                    topic_name.c_str());
             return SHARED_MEMORY_OPEN_ERROR;
         }
 
         mem_length = info.cn_info.channel_size;
 
-        printf("Opened channel with %d length, %s path\n", mem_length, 
-
-            info.cn_info.channel_path.c_str());
+        printf("Opened channel %s with %d length, %s path\n", topic_name.c_str(),
+               mem_length, info.cn_info.channel_path.c_str());
 
         // do setup of stuff in data now!
         indices = (circular_buffer *)data;
@@ -211,8 +268,9 @@ public:
 
         cons_index = indices->get_cons_number();
 
-        printf("Got consumer index: %d, limit: %d\n", cons_index,
-            info.cn_info.max_consumers); fflush(stdout);
+        printf("Got topic %s consumer index: %d, limit: %d\n", topic_name.c_str(),
+               cons_index, info.cn_info.max_consumers);
+        fflush(stdout);
 
         if (cons_index >= info.cn_info.max_consumers) {
             return CONSUMER_LIMIT_EXCEEDED;
