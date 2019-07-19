@@ -18,6 +18,9 @@ set( NODE_SRCS
     src/hailer.cpp
     src/responder.cpp )
 
+set( NODE_APP_SRCS
+    src/node_app_main.cpp )
+
 include(BuildCbuf)
 build_cbuf( cbuf/image.cbuf )
 build_cbuf( cbuf/registry.cbuf )
@@ -46,5 +49,17 @@ target_include_directories( nodelib
 target_include_directories( nodelib PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/cbuf )
 target_link_libraries( nodelib PRIVATE uloglib cbuf_lib)
 set_target_properties( nodelib PROPERTIES CXX_STANDARD 17 )
+
+# Node app library.  This contains main and is a .so so that it can be
+# dlopen'd 
+add_library( nodeapp ${NODE_APP_SRCS} include/node/node_app.h )
+target_link_libraries( nodeapp PUBLIC nodelib)
+#target_link_libraries( nodeapp PRIVATE uloglib cbuf_lib)
+target_include_directories( nodeapp 
+    PUBLIC 
+        ${CMAKE_CURRENT_SOURCE_DIR}/src 
+        ${CMAKE_CURRENT_SOURCE_DIR}/include 
+    )
+
 add_subdirectory(apps)
 add_subdirectory(test)
