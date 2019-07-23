@@ -2,9 +2,14 @@
 
 #include <assert.h>
 #include <semaphore.h>
+#include <cmath>
 
 #define MAX_CONSUMERS 10
 #define VERBOSE_DEBUG 0
+
+// Constants for get_next_full()
+constexpr float NODE_DEFAULT_MSG_WAIT_SEC = 3.0;  // Block for 3 sec
+constexpr float NODE_NON_BLOCKING = 0.0;          // Don't block if empty
 
 // This class expects to be allocated on shared memory 
 class circular_buffer
@@ -126,10 +131,14 @@ public:
         print_state();
     }
 
-    node::NodeError get_next_full(unsigned int idx, unsigned int &elem_index)
-    {
+  node::NodeError get_next_full(unsigned int idx, unsigned int &elem_index,
+                                float timeout_sec = NODE_DEFAULT_MSG_WAIT_SEC) 
+  {
         print_state();
         if (empty_for_this_consumer(idx)) {
+            if (timeout_sec == NODE_NON_BLOCKING) {
+                return node::CONSUMER_TIME_OUT;
+            }
 #if VERBOSE_DEBUG
             printf("get_next_full waiting for producer\n");
 #endif                                
@@ -138,7 +147,22 @@ public:
             auto r = clock_gettime(CLOCK_REALTIME, &ts);
             assert(r != -1);
             // Wait at most X seconds. Maybe tweak this?
-            ts.tv_sec += 3;
+
+            double whole, frac;
+            frac = modf(timeout_sec, &whole);
+            ts.tv_sec += static_cast<long>(timeout_sec);
+            ts.tv_nsec += static_cast<long>(frac*1e9);
+            constexpr long BILLION_NSECS = 1000000000L;
+            if (ts.tv_nsec >= BILLION_NSECS) {
+              ts.tv_sec += ts.tv_nsec / BILLION_NSECS;
+              ts.tv_nsec %= BILLION_NSECS;
+            }
+
+            // TODO - if producer has exited, this won't actually
+            // wait and the queue will still be empty (in contrast
+            // to if the producer is still alive but not publishing).
+            // Should we return a different status if the producer
+            // has exited?
             sem_timedwait(&prod_sem[idx], &ts);
             if (empty_for_this_consumer(idx)) {
                 return node::CONSUMER_TIME_OUT;

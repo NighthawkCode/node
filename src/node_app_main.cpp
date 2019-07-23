@@ -17,7 +17,8 @@ int main(int argc, char *argv[]) {
   }
   assert(app != nullptr);
   while (!app->IsFinished()) {
-    app->HandleNextMessage();
+    app->DispatchMessages();
+    app->Update();
   }
 
   exit(app->GetState() == NodeApp::FINISHED ? 0 : -app->GetState());

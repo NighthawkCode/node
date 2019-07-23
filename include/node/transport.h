@@ -12,8 +12,13 @@ namespace node {
 void* helper_open_channel(const channel_info& info, int& mem_fd);
 void  helper_clean(void *addr, int mem_fd, u32 mem_length);
 
+class publisher_base {
+public:
+  virtual ~publisher_base() {}
+};
+
 template< class T>
-class publisher
+class publisher : public publisher_base
 {
     circular_buffer *indices = nullptr; // Indices should be allocated inside of data... 
     u8* data = nullptr;
@@ -218,6 +223,8 @@ public:
         nodelib node_lib;
         topic_info info;
 
+        assert(retry_delay_sec > 0.0 && retry_delay_sec <= 60.0);
+
         res = node_lib.open();
         if (res != SUCCESS) {
             fprintf(stderr, "Failure to open the node registry for topic %s\n",
@@ -282,11 +289,12 @@ public:
     }
             
     // Consumer: get a pointer to the next struct from the publisher
-    T* get_message(NodeError &result)
+    T* get_message(NodeError &result,
+                   float timeout_sec = NODE_DEFAULT_MSG_WAIT_SEC)
     {
         // This call might block
         unsigned int elem_index;
-        result = indices->get_next_full(cons_index, elem_index);
+        result = indices->get_next_full(cons_index, elem_index, timeout_sec);
         
         if (result == SUCCESS) {
             return &elems[elem_index];
