@@ -151,13 +151,14 @@ protected:
   };
 
   template<typename TMsg>
-  void Provides(const std::string &topic) {
+  node::publisher<TMsg> *Provides(const std::string &topic) {
     node::publisher<TMsg> *channel = new node::publisher<TMsg>;
     *channel = core_.provides<TMsg>(topic);
     node::NodeError res = channel->open();
     assert(res == node::SUCCESS);
     node::publisher_base *base = dynamic_cast<node::publisher_base *>(channel);
     publishers_[typeid(TMsg).hash_code()][topic].reset(base);
+    return channel;
   }
 
   // Return a message that can be published.  If there's only one topic
