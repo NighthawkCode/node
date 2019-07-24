@@ -4,8 +4,9 @@
 #include <semaphore.h>
 #include <pthread.h>
 #include <string.h>
+#include <cmath>
 
-#define VERBOSE_DEBUG 1
+#define VERBOSE_DEBUG 0
 
 struct message_bookkeep
 {
@@ -14,6 +15,10 @@ struct message_bookkeep
   // Is this message published or not?
   unsigned int published = 0;
 };
+
+// Constants for get_next_full()
+constexpr float NODE_DEFAULT_MSG_WAIT_SEC = 3.0;  // Block for 3 sec
+constexpr float NODE_NON_BLOCKING = 0.0;          // Don't block if empty
 
 // This class expects to be allocated on shared memory 
 class circular_buffer

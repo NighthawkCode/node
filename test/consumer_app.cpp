@@ -9,29 +9,34 @@ using namespace node;
 
 class ConsumerNode : public NodeApp {
 public:
-  ConsumerNode() {}
-
-  void Connect() {
-    image_channel_ = core_.subscribe<node_msg::image>("topic");
-
-    auto res = image_channel_.open(30);
-    SetState(res == NodeError::SUCCESS ? RUNNING : FAILED);
+  void Update() override {
+    img.release();
+    if (last_msg_count == msg_count) {
+      printf("Timed out waiting for message.\n");
+      fflush(stdout);
+      if (++timeout > 5) {
+        printf("Didn't see another message; exiting.\n");
+        SetState(FINISHED);
+      }
+    } else {
+      timeout = 0;
+    }
+    last_msg_count = msg_count;
   }
-
-  bool HandleNextMessage() override {
-    NodeError res;
+    
   
-    printf("Now starting consumer \n"); fflush(stdout);
+  void HandleImage(MsgPtr<node_msg::image> &message) {
+    printf("Got new message %d %p\n", message->rows, message.get());
+    // For demonstration, here's how to retain a pointer to message()
+    // after the handler.  But we don't need to do this if we just operate
+    // on the message in the handler, and not afterward.
+    img = std::move(message);
+
+    printf("Now starting consumer\n");
+    fflush(stdout);
 
     printf(" - Acquiring data (%d)... ", msg_count);
     fflush(stdout);
-    node_msg::image *img = image_channel_.get_message(res);
-    if (res != SUCCESS) {
-      // Likely the producer is no longer around
-      printf(" No data received in a while, terminating ...\n");
-      SetState(NodeApp::FINISHED);
-      return false;
-    }
 
     printf("Value of rows: %d (expected %d) ", img->rows, val+1);
     fflush(stdout);
@@ -46,32 +51,31 @@ public:
     }
     
     // maybe do something with img here
-    usleep(1000000);
+    usleep(10000);
     
-    printf(" releasing data ... ");
     fflush(stdout);
-    image_channel_.release_message( img );
-    printf(" RELEASED!\n");
     if (++msg_count == 50) {
       SetState(FINISHED);
     }
-    return true;
+    printf("done\n");
   }
 
-  // Node-related fields
-  node::subscriber<node_msg::image> image_channel_;
+  ConsumerNode() {
+    Subscribe(&ConsumerNode::HandleImage, "topic");
+  }
 
   // Other state for test application
   int msg_count = 0;
   int val = 0;
+  int last_msg_count = -1;
+  int timeout = 0;
   bool received_first_val = false;
+  MsgPtr<node_msg::image> img;
 };
 
 std::unique_ptr<NodeApp> node::InitializeNodeApp(int argc, char *argv[],
                                                  const NodeApp::Options &options) {
   printf("Hello, I am a consumer of messages\n");
-  auto *consumer = new ConsumerNode;
-  consumer->Connect();
-  return std::unique_ptr<NodeApp>(consumer);
+  return std::unique_ptr<NodeApp>(new ConsumerNode);
 }
 

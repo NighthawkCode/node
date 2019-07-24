@@ -12,8 +12,13 @@ namespace node {
 void* helper_open_channel(const channel_info& info, int& mem_fd);
 void  helper_clean(void *addr, int mem_fd, u32 mem_length);
 
+class publisher_base {
+public:
+  virtual ~publisher_base() {}
+};
+
 template< class T>
-class publisher
+class publisher : public publisher_base
 {
     circular_buffer *indices = nullptr; // Indices should be allocated inside of data... 
     message_bookkeep *bk = nullptr; // Also allocated inside of data
@@ -230,6 +235,8 @@ public:
         // Find the registry, inquire about this channel
         nodelib node_lib;
         topic_info info;
+
+        assert(retry_delay_sec > 0.0 && retry_delay_sec <= 60.0);
 
         res = node_lib.open();
         if (res != SUCCESS) {
