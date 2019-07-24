@@ -42,7 +42,8 @@ int main(int argc, char **argv)
     for(int it=0; it<500; it++) {
         printf(" - Acquiring data (%d)... ", it);
         fflush(stdout);
-        node_msg::image *img = image_channel.get_message(res);
+
+        auto img = image_channel.get_message(res);
         if (res != node::SUCCESS) {
             // Likely the producer is no longer around
             printf(" No data received in a while, terminating ...\n");

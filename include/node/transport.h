@@ -12,6 +12,87 @@ namespace node {
 void* helper_open_channel(const channel_info& info, int& mem_fd);
 void  helper_clean(void *addr, int mem_fd, u32 mem_length);
 
+template< class T>
+class subscriber;
+
+// Simple smart pointer for messages.  Subset of functionality of
+// unique_ptr.  This allows NodeApps to hold onto a message outside their
+// message handler.
+template <typename Msg>
+class MsgPtr {
+public:
+  friend class SubscriptionBase;
+
+  // Empty constructor.
+  MsgPtr() {}
+
+  // Construct a new MsgPtr and transfer ownership
+  MsgPtr(MsgPtr &&rhs) {
+    sub_ = rhs.sub_;
+    ptr_ = rhs.ptr_;
+
+    rhs.sub_ = nullptr;
+    rhs.ptr_ = nullptr;
+  }
+
+  // Destructor.  Deallocates message.
+  ~MsgPtr() {
+    release();
+  }
+
+  // Get the index
+  unsigned int getIdx() const { return msg_index; }
+
+  // Accessor.
+  Msg *get() { return ptr_; }
+
+  // Dereference operator.
+  Msg *operator->() const {
+    assert(ptr_ != nullptr);
+    return ptr_;
+  }
+
+  // Assignment operator - transfers ownership from RHS.  Use like this:
+  // new_ptr = std::move(old_ptr);
+  void operator=(MsgPtr &&rhs) {
+    if (ptr_ != nullptr) {
+      if (ptr_ == rhs.ptr_) {
+        assert(sub_ == rhs.sub_);
+        rhs.ptr_ = nullptr;
+        rhs.sub_ = nullptr;
+        return;
+      }
+      release();
+    }
+    sub_ = rhs.sub_;
+    ptr_ = rhs.ptr_;
+
+    rhs.sub_ = nullptr;
+    rhs.ptr_ = nullptr;
+  }
+
+  // Releases ownership and deallocates message.
+  void release();
+
+  // This function should only be called from inside the subscriber class
+  void make_empty() {
+    ptr_ = nullptr;
+    sub_ = nullptr;
+  }
+
+  // Protected constructor to use by friendly Subscription class.
+  MsgPtr(Msg *m, node::subscriber<Msg> *sub, unsigned int idx) : sub_(sub), ptr_(m), msg_index(idx) {
+    assert(sub_ != nullptr);
+    assert(ptr_ != nullptr);
+  }
+
+private:
+  node::subscriber<Msg> *sub_ = nullptr;
+  Msg *ptr_ = nullptr;
+  unsigned int msg_index;
+};
+
+
 class publisher_base {
 public:
   virtual ~publisher_base() {}
@@ -188,7 +269,6 @@ public:
         mem_length = rhs.mem_length;
         elems = rhs.elems;
         bk = rhs.bk;
-        checked_index = rhs.checked_index;
         last_index = rhs.last_index;
         pid = rhs.pid;
 
@@ -208,7 +288,6 @@ public:
         mem_length = rhs.mem_length;
         elems = rhs.elems;
         bk = rhs.bk;
-        checked_index = rhs.checked_index;
         last_index = rhs.last_index;
         pid = rhs.pid;
 
@@ -304,29 +383,28 @@ public:
 
     // Consumer: get a pointer to the next struct from the publisher
     // BLOCKING call
-    T* get_message(NodeError &result)
+    MsgPtr<T> get_message(NodeError &result)
     {
         // This call might block
         unsigned int elem_index;
         result = indices->get_next_full(bk, last_index, elem_index);
         
         if (result == SUCCESS) {
+            // This assert is a bit suspect, there is a remote corner case where the assert might fail
             assert(last_index != elem_index);
-            checked_index = elem_index;
             last_index = elem_index;
-            return &elems[elem_index];
+            return MsgPtr<T>(&elems[elem_index], this, elem_index);
         }
         // The most likely problem here is that the producer died, maybe check one day
-        checked_index = -1;
 
-        return nullptr;
+        return MsgPtr<T>(nullptr, nullptr, 0);
     }
     
     // Consumer: This function assumes that the image* previously returned will no longer be used
-    void release_message( T* elem )
+    void release_message( MsgPtr<T>& elem )
     {
-        indices->release(bk, checked_index);
-        checked_index = -1;
+        indices->release(bk, elem.getIdx());
+        elem.make_empty();
     }
     
     // This function will do a resize .. TO BE DONE
@@ -347,5 +425,16 @@ public:
     }
 
 };
+
+template<class T>
+void MsgPtr<T>::release() {
+  if (ptr_ != nullptr) {
+    assert(sub_ != nullptr);
+    sub_->release_message(*this);
+  }
+  ptr_ = nullptr;
+  sub_ = nullptr;
+}
+
 
 }
