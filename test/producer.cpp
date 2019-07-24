@@ -18,7 +18,7 @@ int main(int argc, char **argv)
 
     // List existing topics
 
-    node::NodeError res = image_channel.open();
+    node::NodeError res = image_channel.open(100);
     if (res != node::SUCCESS) {
         // TODO: make it so the node server does not need restart
         fprintf(stderr, "Failure to create a topic (%d), maybe you need to restart the node server\n", res);
@@ -28,7 +28,7 @@ int main(int argc, char **argv)
     // Wait a bit so consumers can attach if needed
     usleep(2000000);
     printf("Now starting publishing\n");
-    for(int it = 0; it < 50; it++) {
+    for(int it = 0; it < 50000; it++) {
         printf(" - Acquiring data (%d)... ", it);
         fflush(stdout);
         node_msg::image* img = image_channel.prepare_message();
@@ -43,7 +43,7 @@ int main(int argc, char **argv)
         fflush(stdout);
         image_channel.transmit_message( img );
         printf(" PUBLISHED!\n");
-        usleep(1000000);
+        usleep(330000);
     }
 
     return 0;

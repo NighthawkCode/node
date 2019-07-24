@@ -16,6 +16,7 @@ template< class T>
 class publisher
 {
     circular_buffer *indices = nullptr; // Indices should be allocated inside of data... 
+    message_bookkeep *bk = nullptr; // Also allocated inside of data
     u8* data = nullptr;
     int mem_fd = 0;
     u32 mem_length = 0;
@@ -34,10 +35,12 @@ public:
         mem_fd = rhs.mem_fd;
         mem_length = rhs.mem_length;
         elems = rhs.elems;
+        bk = rhs.bk;
 
         rhs.indices = nullptr;
         rhs.data = nullptr;
         rhs.elems = nullptr;
+        rhs.bk = nullptr;
         rhs.mem_fd = 0;
     }
 
@@ -45,12 +48,14 @@ public:
     {
         topic_name = std::move(rhs.topic_name);
         indices = rhs.indices;
+        bk = rhs.bk;
         data = rhs.data;
         mem_fd = rhs.mem_fd;
         mem_length = rhs.mem_length;
         elems = rhs.elems;
 
         rhs.indices = nullptr;
+        rhs.bk = nullptr;
         rhs.data = nullptr;
         rhs.elems = nullptr;
         rhs.mem_fd = 0;
@@ -65,7 +70,7 @@ public:
     
     // this function will open the channel, allocate memory, set the indices, and
     // do any other needed initialization
-    NodeError open(int num_elems = 4, unsigned int max_consumers = 5)
+    NodeError open(int num_elems = 4)
     {
         NodeError res;
         // Find the registry, inquire about this channel
@@ -77,14 +82,10 @@ public:
             return res;
         }
 
-        u32 sz = (sizeof(circular_buffer) + num_elems*sizeof(T));
+        u32 sz = (sizeof(circular_buffer) + num_elems*sizeof(message_bookkeep) + num_elems*sizeof(T));
         int reminder = sz / 1024;
         if (reminder != 0) {
             sz = sz + 1024 - reminder;
-        }
-
-        if (max_consumers >= MAX_CONSUMERS) {
-            return CONSUMER_LIMIT_EXCEEDED;
         }
 
         info.name = topic_name;
@@ -93,7 +94,6 @@ public:
         info.cn_info.channel_path = "/node_";
         info.cn_info.channel_path += std::to_string(info.message_hash);
         info.cn_info.channel_size = sz;
-        info.cn_info.max_consumers = max_consumers;
         info.visible = false;
         res = node_lib.create_topic(info);
         if (res != SUCCESS) {
@@ -112,8 +112,9 @@ public:
 
         // do setup of stuff in data now!
         indices = (circular_buffer *)data;
-        elems = (T *)( (u8 *)data + sizeof(circular_buffer));
-        indices->initialize(num_elems);
+        bk = (message_bookkeep *)(data + sizeof(circular_buffer));
+        elems = (T *)( (u8 *)data + sizeof(circular_buffer) + num_elems*sizeof(message_bookkeep));
+        indices->initialize(num_elems, bk);
 
         res = node_lib.make_topic_visible(topic_name);
 
@@ -124,14 +125,14 @@ public:
     T* prepare_message()
     {
         // This call might block
-        unsigned int elem_index = indices->get_next_empty();
+        unsigned int elem_index = indices->get_next_empty(bk);
         return &elems[elem_index];
     }
     
     // Producer: This function assumes that the image* previously returned will no longer be used
     void transmit_message( T* elem )
     {
-        indices->publish();
+        indices->publish(bk);
     }
             
     // This function will do a resize .. TO BE DONE
@@ -148,6 +149,7 @@ public:
         mem_fd = 0;
         elems = nullptr;
         indices = nullptr;
+        bk = nullptr;
     }
 };
 
@@ -160,11 +162,14 @@ template< class T>
 class subscriber
 {
     circular_buffer *indices = nullptr; // Indices are allocated inside of data
-    u32 cons_index = 0; // Indicate which consumer this is, out of multiple in a topic
+    message_bookkeep *bk = nullptr; // Also a pointer inside data, shared memory
     u8* data = nullptr;
     int mem_fd = 0;
     u32 mem_length = 0;
     T*  elems = nullptr;  
+    u32 pid = 0;
+    s32 checked_index = -1; // Temp variable until we use the new MsgPtr class
+    s32 last_index = -1;
 
     std::string topic_name;
 public:
@@ -173,32 +178,40 @@ public:
     subscriber(subscriber<T>&& rhs) : topic_name(std::move(rhs.topic_name))
     {
         indices = rhs.indices;
-        cons_index = rhs.cons_index;
         data = rhs.data;
         mem_fd = rhs.mem_fd;
         mem_length = rhs.mem_length;
         elems = rhs.elems;
+        bk = rhs.bk;
+        checked_index = rhs.checked_index;
+        last_index = rhs.last_index;
+        pid = rhs.pid;
 
         rhs.indices = nullptr;
         rhs.data = nullptr;
         rhs.elems = nullptr;
         rhs.mem_fd = 0;
+        rhs.bk = nullptr;
     }
 
     subscriber &operator=(subscriber<T>&& rhs) 
     {
         topic_name = std::move(rhs.topic_name);
         indices = rhs.indices;
-        cons_index = rhs.cons_index;
         data = rhs.data;
         mem_fd = rhs.mem_fd;
         mem_length = rhs.mem_length;
         elems = rhs.elems;
+        bk = rhs.bk;
+        checked_index = rhs.checked_index;
+        last_index = rhs.last_index;
+        pid = rhs.pid;
 
         rhs.indices = nullptr;
         rhs.data = nullptr;
         rhs.elems = nullptr;
         rhs.mem_fd = 0;
+        rhs.bk = nullptr;
 
         return *this;
     }
@@ -264,52 +277,55 @@ public:
 
         // do setup of stuff in data now!
         indices = (circular_buffer *)data;
-        elems = (T *)( (u8 *)data + sizeof(circular_buffer));        
+        bk = (message_bookkeep *)(data + sizeof(circular_buffer));
+        elems = (T *)(bk + indices->get_buf_size()*sizeof(message_bookkeep));
 
-        cons_index = indices->get_cons_number();
-
-        printf("Got topic %s consumer index: %d, limit: %d\n", topic_name.c_str(),
-               cons_index, info.cn_info.max_consumers);
+        printf("Subscribed to topic %s\n", topic_name.c_str());
         fflush(stdout);
 
-        if (cons_index >= info.cn_info.max_consumers) {
-            return CONSUMER_LIMIT_EXCEEDED;
-        }
-
-        indices->initialize_consumer(cons_index);
+        pid = (u32) getpid();
 
         return SUCCESS;
     }
-            
+
+    /// Non blocking call to see if there is new data
+    bool is_there_new()
+    {
+      unsigned int idx = indices->get_next_index(bk, last_index);
+      return indices->is_index_available(bk, idx);
+    }
+
     // Consumer: get a pointer to the next struct from the publisher
+    // BLOCKING call
     T* get_message(NodeError &result)
     {
         // This call might block
         unsigned int elem_index;
-        result = indices->get_next_full(cons_index, elem_index);
+        result = indices->get_next_full(bk, last_index, elem_index);
         
         if (result == SUCCESS) {
+            assert(last_index != elem_index);
+            checked_index = elem_index;
+            last_index = elem_index;
             return &elems[elem_index];
         }
         // The most likely problem here is that the producer died, maybe check one day
+        checked_index = -1;
+
         return nullptr;
     }
     
     // Consumer: This function assumes that the image* previously returned will no longer be used
     void release_message( T* elem )
     {
-        indices->release(cons_index);
+        indices->release(bk, checked_index);
+        checked_index = -1;
     }
     
     // This function will do a resize .. TO BE DONE
     bool resize()
     {
         return true;
-    }
-
-    u32 get_index() const 
-    {
-        return cons_index;
     }
 
     ~subscriber()
@@ -320,6 +336,7 @@ public:
         mem_fd = 0;
         elems = nullptr;
         indices = nullptr;
+        bk = nullptr;
     }
 
 };

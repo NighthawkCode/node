@@ -38,8 +38,8 @@ int main(int argc, char **argv)
     unsigned int val = 0;
     bool first_val = false;
 
-    printf("Now starting consumer [%d] \n", image_channel.get_index()); fflush(stdout);
-    for(int it=0; it<50; it++) {
+    printf("Now starting consumer \n"); fflush(stdout);
+    for(int it=0; it<500; it++) {
         printf(" - Acquiring data (%d)... ", it);
         fflush(stdout);
         node_msg::image *img = image_channel.get_message(res);
@@ -48,7 +48,7 @@ int main(int argc, char **argv)
             printf(" No data received in a while, terminating ...\n");
             break;
         }
-        printf("Value of rows: %d (expected %d) ", img->rows, val+1);
+        printf("Value of rows: %d (expected %d) \n", img->rows, val+1);
         fflush(stdout);
         if (!first_val) {
             val = img->rows;
@@ -56,16 +56,16 @@ int main(int argc, char **argv)
         } else {
             
             // Very simple way to check that we are receiving in order and not missing
-            assert(img->rows == val +1);
+//             assert(img->rows == val +1);
             val = img->rows;
         }
         // maybe do something with img here
-        usleep(1000000);
 
         printf(" releasing data ... ");
         fflush(stdout);
         image_channel.release_message( img );
         printf(" RELEASED!\n");
+        usleep(1000000);
     }
     return 0;
 }

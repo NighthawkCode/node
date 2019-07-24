@@ -21,7 +21,7 @@ public:
   bool HandleNextMessage() override {
     NodeError res;
   
-    printf("Now starting consumer [%d] \n", image_channel_.get_index()); fflush(stdout);
+    printf("Now starting consumer \n"); fflush(stdout);
 
     printf(" - Acquiring data (%d)... ", msg_count);
     fflush(stdout);

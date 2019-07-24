@@ -78,7 +78,7 @@ static const int mem_length = 128 * KB;
 #define BUFFER_SIZE 4096
 #define NODE_REGISTRY_PORT 25678
 
-#define DEBUG 0
+#define DEBUG 1
 
 static const char *RequestTypeToStr[] = {
     "CREATE_TOPIC",
@@ -102,9 +102,9 @@ void printRequest(const node_msg::registry_request& request)
     printf("  RequestType: %s\n", RequestTypeToStr[request.action]);
     printf("  Topic name: %s\n", request.topic_name.c_str());
     printf("  Msg name: %s\n", request.msg_name.c_str());
-    printf("  Msg Hash: %08lX\n", request.msg_hash);
+    printf("  Msg Hash: 0x%016" PRIX64 "\n", request.msg_hash);
     printf("  Chn Path: %s\n", request.chn_path.c_str());
-    printf("  Chn size: %d\n", request.chn_size);
+    printf("  Chn size: %u\n", request.chn_size);
 }
 
 void printReply(const node_msg::registry_reply& reply)
@@ -112,9 +112,9 @@ void printReply(const node_msg::registry_reply& reply)
     printf("  Return status: %s\n", RequestStatusToStr[reply.status]);
     printf("  Topic name: %s\n", reply.topic_name.c_str());
     printf("  Msg name: %s\n", reply.msg_name.c_str());
-    printf("  Msg Hash: %08lX\n", reply.msg_hash);
+    printf("  Msg Hash: 0x%016" PRIX64 "\n", reply.msg_hash);
     printf("  Chn Path: %s\n", reply.chn_path.c_str());
-    printf("  Chn size: %d\n", reply.chn_size);
+    printf("  Chn size: %u\n", reply.chn_size);
 }
 
 namespace node {
@@ -182,6 +182,10 @@ NodeError send_request(const std::string &server_ip,
         fprintf(stderr, "Error decoding the received reply\n");
         return IDL_DECODE_ERROR;
     }
+
+#if DEBUG
+    printReply(reply);
+#endif
 
     return SUCCESS;
 }
@@ -276,7 +280,6 @@ NodeError nodelib::get_topic_info(u32 channel_index, topic_info& info)
     info.message_hash = reply.msg_hash;
     info.cn_info.channel_path = reply.chn_path;
     info.cn_info.channel_size = reply.chn_size;
-    info.cn_info.max_consumers = reply.max_consumers;
     return SUCCESS;
 }
 
@@ -310,7 +313,6 @@ NodeError nodelib::create_topic(const topic_info& info)
     req.msg_name = info.message_name;
     req.chn_path = info.cn_info.channel_path;
     req.chn_size = info.cn_info.channel_size;
-    req.max_consumers = info.cn_info.max_consumers;
     req.publisher_pid = get_my_pid();
 
     auto ret = send_request(hostname, req, reply);    
@@ -350,7 +352,6 @@ NodeError nodelib::get_topic_info(const std::string& name, topic_info& info)
     info.message_hash = reply.msg_hash;
     info.cn_info.channel_path = reply.chn_path;
     info.cn_info.channel_size = reply.chn_size;
-    info.cn_info.max_consumers = reply.max_consumers;
     return SUCCESS;
 }
 
