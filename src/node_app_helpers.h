@@ -128,7 +128,7 @@ protected:
   // Check for messages and dispatch message to handler.
   NodeError CheckAndHandleMessage() override {
     NodeError res;
-    TMsg *msg = sub.get_message(res, timeout_sec_);
+    TMsg *msg = sub.get_message(res);
     if (res == SUCCESS) {
       assert(msg != nullptr);
       assert(handler != nullptr);
