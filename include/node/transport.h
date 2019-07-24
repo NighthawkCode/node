@@ -70,7 +70,7 @@ public:
     
     // this function will open the channel, allocate memory, set the indices, and
     // do any other needed initialization
-    NodeError open(int num_elems = 4)
+    NodeError open(int num_elems = 10)
     {
         NodeError res;
         // Find the registry, inquire about this channel

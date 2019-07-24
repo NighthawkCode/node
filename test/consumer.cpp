@@ -65,7 +65,7 @@ int main(int argc, char **argv)
         fflush(stdout);
         image_channel.release_message( img );
         printf(" RELEASED!\n");
-        usleep(1000000);
+        usleep(10000);
     }
     return 0;
 }
