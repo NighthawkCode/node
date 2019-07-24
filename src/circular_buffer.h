@@ -184,6 +184,26 @@ public:
         return node::SUCCESS;
     }
 
+    node::NodeError get_head_full(message_bookkeep *bk, unsigned int &elem_index)
+    {
+        int next_idx = head_;
+        pthread_mutex_lock(&buffer_lock);
+
+        print_state(bk);
+        if (bk[next_idx].published == 1) {
+          next_idx = inc(next_idx);
+        }
+
+        assert(bk[next_idx].published != 1);
+        pthread_cond_wait(&buffer_cv, &buffer_lock);
+
+        assert(bk[next_idx].published == 1);
+        bk[next_idx].refcount++;
+        pthread_mutex_unlock(&buffer_lock);
+        elem_index = next_idx;
+        return node::SUCCESS;
+    }
+
     // Subscribers call this, idx is the element index
     void release(message_bookkeep *bk, unsigned int idx)
     {
