@@ -11,7 +11,6 @@ struct channel_info
 {
     std::string channel_path;
     u32         channel_size;
-    u32         max_consumers;
     // Add information on TCP / UDP / SHMEM
 };
 

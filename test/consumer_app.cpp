@@ -51,7 +51,7 @@ public:
     }
     
     // maybe do something with img here
-    usleep(1000000);
+    usleep(10000);
     
     fflush(stdout);
     if (++msg_count == 50) {

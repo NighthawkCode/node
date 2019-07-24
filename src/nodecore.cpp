@@ -15,6 +15,8 @@
 #define NUM_CONNECTIONS    10
 #define BUFFER_SIZE        8196
 
+#define DEBUG 0
+
 void printRequest(const node_msg::registry_request& request);
 void printReply(const node_msg::registry_reply& reply);
 
@@ -34,7 +36,6 @@ static void TopicInfoToReply(const node::topic_info &inf, node_msg::registry_rep
     reply.msg_hash = inf.message_hash;
     reply.chn_path = inf.cn_info.channel_path;
     reply.chn_size = inf.cn_info.channel_size;
-    reply.max_consumers = inf.cn_info.max_consumers;
     reply.publisher_pid = inf.publisher_pid;
     reply.visible  = inf.visible;
 }
@@ -101,8 +102,8 @@ int nodecore_main()
 
         // Handle here the request
         valread = read( new_socket , buffer, BUFFER_SIZE); 
-        node_msg::registry_request request;
-        node_msg::registry_reply reply;
+        node_msg::registry_request request = {};
+        node_msg::registry_reply reply = {};
 
         bool ret = request.decode(buffer, valread);
         if (!ret) {
@@ -115,13 +116,12 @@ int nodecore_main()
 
         // TODO: Here we would do internal work for the request, creation, query...
         if (request.action == node_msg::CREATE_TOPIC) {
-            node::topic_info inf;
+            node::topic_info inf = {};
             inf.name = request.topic_name;
             inf.message_name = request.msg_name;
             inf.message_hash = request.msg_hash;
             inf.cn_info.channel_path = request.chn_path;
             inf.cn_info.channel_size = request.chn_size;
-            inf.cn_info.max_consumers = request.max_consumers;
             inf.publisher_pid = request.publisher_pid;
             ret = reg.create_topic(inf);
             if (!ret) {
@@ -137,7 +137,7 @@ int nodecore_main()
                 reply.chn_size = request.chn_size;
             }
         } else if (request.action == node_msg::ADVERTISE_TOPIC) {
-            node::topic_info inf;
+            node::topic_info inf = {};
             inf.name = request.topic_name;
             // Maybe ensure the pid of the request matches what is stored
             ret = reg.make_topic_visible(inf);
@@ -145,7 +145,7 @@ int nodecore_main()
             else reply.status = node_msg::TOPIC_NOT_FOUND;
         } else if (request.action == node_msg::TOPIC_BY_NAME) {
             // search topic by name 
-            node::topic_info inf;
+            node::topic_info inf = {};
             ret = reg.get_topic_info(request.topic_name, inf);
             if (!ret) {
                 printf(">> Query Topic by name failed\n");
@@ -164,7 +164,7 @@ int nodecore_main()
             }
             printf(">> Query Num Topics returned %d topics\n", reply.num_topics);
         } else if (request.action == node_msg::TOPIC_AT_INDEX) {
-            node::topic_info inf;
+            node::topic_info inf = {};
             if (request.cli == 123) {
                 ret = reg.get_topic_info_cli(request.topic_index, inf);
             } else { 
@@ -190,6 +190,9 @@ int nodecore_main()
             continue;            
         }
 
+#if DEBUG
+        printReply(reply);
+#endif
         send(new_socket , buffer , reply_size , 0 ); 
 
         close(new_socket);

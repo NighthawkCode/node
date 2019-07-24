@@ -2,10 +2,19 @@
 
 #include <assert.h>
 #include <semaphore.h>
+#include <pthread.h>
+#include <string.h>
 #include <cmath>
 
-#define MAX_CONSUMERS 10
 #define VERBOSE_DEBUG 0
+
+struct message_bookkeep
+{
+  // Refcount for the message
+  unsigned int refcount = 0;
+  // Is this message published or not?
+  unsigned int published = 0;
+};
 
 // Constants for get_next_full()
 constexpr float NODE_DEFAULT_MSG_WAIT_SEC = 3.0;  // Block for 3 sec
@@ -14,25 +23,20 @@ constexpr float NODE_NON_BLOCKING = 0.0;          // Don't block if empty
 // This class expects to be allocated on shared memory 
 class circular_buffer
 {
-    unsigned int buf_size;
-    unsigned int head_;
-    unsigned int num_cons;
+    unsigned int  buf_size;
+    unsigned int  head_;
 
-    unsigned int tail_[MAX_CONSUMERS];
-    bool         valid[MAX_CONSUMERS];
-    bool         full_[MAX_CONSUMERS];
-
-    sem_t        prod_sem[MAX_CONSUMERS]; 
-    sem_t        cons_sem[MAX_CONSUMERS]; 
+    pthread_cond_t  buffer_cv;
+    pthread_mutex_t buffer_lock;
 
 public:
-    void print_state()
+    void print_state(message_bookkeep *bk)
     {
 #if VERBOSE_DEBUG
-        printf("\nnum_cons: %d head: %d tail [%d %d %d] valid [%d %d %d] full [%d %d %d]\n",
-            num_cons, head_, tail_[0], tail_[1], tail_[2], 
-            valid[0], valid[1], valid[2], full_[0], full_[1], full_[2]);
-#endif        
+        int old_head = dec(head_);
+        printf("\nhead: %d head_.refcount %d head_.published %d\n", head_, bk[head_].refcount, bk[head_].published);
+        printf("oldhead: %d oldhead_.refcount %d oldhead_.published %d\n", old_head, bk[old_head].refcount, bk[old_head].published);
+#endif
     }
 
     unsigned int inc(unsigned int v) const
@@ -40,9 +44,9 @@ public:
         return (v+1)%buf_size;
     }
 
-    bool match(unsigned int head, unsigned int tail) const
+    int dec(int v) const
     {
-        return inc(head) == tail;
+        return (v+buf_size-1)%buf_size;
     }
 
     void set_buf_size(unsigned int buf_size)
@@ -50,173 +54,170 @@ public:
         this->buf_size = buf_size;
     }
 
-    /// This function will uniquely identify different consumers
-    unsigned int get_cons_number() {
-        return __atomic_fetch_add(&num_cons, 1, __ATOMIC_SEQ_CST);
+    unsigned int get_buf_size() const
+    {
+        return buf_size;
     }
 
-    /// Returns wether the buffer is empty or not.
-    bool empty() const
+    /// Get the index on the buffer of the next empty element, called by publisher
+    /// This function will not block for now, ideally we never ran out of space
+    unsigned int get_next_empty(message_bookkeep *bk)
     {
-        bool is_empty = true;
-        if (full()) return false;
-        // The buffer is only empty when all valid consumers have head == tail
-        for(int i=0; i<MAX_CONSUMERS; i++) {
-            if (valid[i] && match(head_, tail_[i])) {
-                is_empty = false;
-            }
+        pthread_mutex_lock(&buffer_lock);
+
+        print_state(bk);
+
+        // Alternatively we could block here
+        if (bk[head_].refcount > 0) {
+          assert(!"Not enough space, or someone did not release a buffer!!");
+          printf("Node: buffer not release, overriding\n");
+          bk[head_].refcount = 0;
         }
-        return is_empty;
-    }
-
-    /// Returns wether the buffer is empty or not for this consumer
-    bool empty_for_this_consumer(unsigned int idx) const
-    {
-        assert(valid[idx]);
-        if (full_[idx]) return false;
-        return head_ == tail_[idx];
-    }
-
-    /// Returns wether the buffer is full or not.
-    bool full() const
-    {
-        bool is_full = false;       
-
-        for(int i=0; i<MAX_CONSUMERS; i++) {
-            if (valid[i] && full_[i]) {
-                is_full = true;                
-            }
-        }
-        return is_full;
-    }
-
-    /// Get the index on the buffer of the next empty element.
-    /// This function blocks if the buffer is full
-    unsigned int get_next_empty()
-    {
-        print_state();
-        for(int i=0; i<MAX_CONSUMERS; i++) {
-            if (valid[i] && full_[i]) {
-#if VERBOSE_DEBUG
-                printf("get_next_empty waiting for cons %d\n", i);
-#endif                                
-                sem_wait(&cons_sem[i]);
-            }
-        }
-#if VERBOSE_DEBUG
-        printf("Get empty index: %d\n", head_);
-#endif                                        
+        bk[head_].published = 0;
+        pthread_mutex_unlock(&buffer_lock);
         return head_;
     }
 
-    /// This function will add an item at the top
-    void publish()
+    /// This function will publish an item and advertise that
+    void publish(message_bookkeep *bk)
     {
 #if VERBOSE_DEBUG
         printf("Publish index: %d\n", head_);
-#endif                                        
+#endif
+        pthread_mutex_lock(&buffer_lock);
+        bk[head_].published = 1;
+        assert(bk[head_].refcount == 0);
         head_ = (head_ + 1) % buf_size;
-        // Update full, see if tail and head meet
-        for(int i=0; i<MAX_CONSUMERS; i++) {
-            if (valid[i]) {
-                full_[i] = (head_ == tail_[i]);
-                if (full_[i]) {
-#if VERBOSE_DEBUG
-                    printf("Mark consumer %d as full\n", i);
-#endif                                        
-                    sem_post(&prod_sem[i]);
-                }
-            }
-        }
-        print_state();
+
+        print_state(bk);
+
+        pthread_mutex_unlock(&buffer_lock);
+        pthread_cond_broadcast(&buffer_cv);
     }
 
-  node::NodeError get_next_full(unsigned int idx, unsigned int &elem_index,
-                                float timeout_sec = NODE_DEFAULT_MSG_WAIT_SEC) 
-  {
-        print_state();
-        if (empty_for_this_consumer(idx)) {
-            if (timeout_sec == NODE_NON_BLOCKING) {
-                return node::CONSUMER_TIME_OUT;
-            }
-#if VERBOSE_DEBUG
-            printf("get_next_full waiting for producer\n");
-#endif                                
-            // TODO: Block, add timeout and retry
-            struct timespec ts;
-            auto r = clock_gettime(CLOCK_REALTIME, &ts);
-            assert(r != -1);
-            // Wait at most X seconds. Maybe tweak this?
-
-            double whole, frac;
-            frac = modf(timeout_sec, &whole);
-            ts.tv_sec += static_cast<long>(timeout_sec);
-            ts.tv_nsec += static_cast<long>(frac*1e9);
-            constexpr long BILLION_NSECS = 1000000000L;
-            if (ts.tv_nsec >= BILLION_NSECS) {
-              ts.tv_sec += ts.tv_nsec / BILLION_NSECS;
-              ts.tv_nsec %= BILLION_NSECS;
-            }
-
-            // TODO - if producer has exited, this won't actually
-            // wait and the queue will still be empty (in contrast
-            // to if the producer is still alive but not publishing).
-            // Should we return a different status if the producer
-            // has exited?
-            sem_timedwait(&prod_sem[idx], &ts);
-            if (empty_for_this_consumer(idx)) {
-                return node::CONSUMER_TIME_OUT;
-            }
+    /// This is a function called by subscribers, it finds out the next idx for the
+    /// subscriber given which was the last index it checked (it could be -1 if none).
+    ///
+    unsigned int get_next_index(message_bookkeep *bk, int last_checked_idx)
+    {
+      int prev_head = dec(head_);
+      if (last_checked_idx == -1) {
+        // we try to return the latest, which would be head_ - 1.
+        if (bk[prev_head].published == 1) {
+          return prev_head;
+        } else {
+          // Handle the case where we do not have anything published yet
+          return head_;
         }
-        elem_index = tail_[idx];
-#if VERBOSE_DEBUG
-        printf("Getting index: %d\n", elem_index);
-#endif                                        
+      } else {
+        int next_idx = inc(last_checked_idx);
+        if (bk[next_idx].published == 1) {
+          return next_idx;
+        } else {
+          // go and try with the -1 version
+          return get_next_index(bk, -1);
+        }
+      }
+    }
+
+    // Function called by subscribers to see if there is new data
+    bool is_index_available(message_bookkeep *bk, int idx)
+    {
+      return bk[idx].published == 1;
+    }
+
+    // last_checked_idx in this case is eitehr -1 or the index for the last elem checked
+    // out by this subscriber. get_next_full will look for the very next if it exists
+    // this is a BLOCKING call
+    node::NodeError get_next_full(message_bookkeep *bk, int last_checked_idx, unsigned int &elem_index)
+    {
+        int next_idx;
+        pthread_mutex_lock(&buffer_lock);
+
+        print_state(bk);
+        int prev_head = dec(head_);
+        if (last_checked_idx == -1) {
+          // we try to return the latest, which would be head_ - 1.
+          if (bk[prev_head].published == 1) {
+            printf("Using prev_head\n");
+            bk[prev_head].refcount++;
+            pthread_mutex_unlock(&buffer_lock);
+            elem_index = prev_head;
+            return node::SUCCESS;
+          } else {
+            // Handle the case where we do not have anything published yet
+            printf("Using the current head\n");
+            next_idx = head_;
+          }
+        } else {
+          next_idx = inc(last_checked_idx);
+          if (bk[next_idx].published == 1) {
+            printf("Using next_id, last checked +1\n");
+            bk[next_idx].refcount++;
+            pthread_mutex_unlock(&buffer_lock);
+            elem_index = next_idx;
+            return node::SUCCESS;
+          } else {
+            if (bk[last_checked_idx].published != 1) {
+              // Fallback here since the last checked index was not published, meaning we are lost and we reset
+              printf("Fallback to minus 1, the head. Last checked id was: %d, bk[last] = %d ; bk[next] = %d\n",
+                     last_checked_idx, bk[last_checked_idx].published, bk[next_idx].published);
+              // go and try with the -1 version
+              pthread_mutex_unlock(&buffer_lock);
+              return get_next_full(bk, -1, elem_index);
+            }
+            // Fall through to the case where we wait for next_idx
+          }
+        }
+
+        if (bk[next_idx].published == 1) {
+          bk[next_idx].refcount++;
+          pthread_mutex_unlock(&buffer_lock);
+          elem_index = next_idx;
+          return node::SUCCESS;
+        }
+        pthread_cond_wait(&buffer_cv, &buffer_lock);
+        assert(bk[next_idx].published == 1);
+        bk[next_idx].refcount++;
+        pthread_mutex_unlock(&buffer_lock);
+        elem_index = next_idx;
         return node::SUCCESS;
     }
 
-    void release(unsigned int idx)
+    // Subscribers call this, idx is the element index
+    void release(message_bookkeep *bk, unsigned int idx)
     {
 #if VERBOSE_DEBUG
-        printf("Releasing index: %d\n", tail_[idx]);
+        printf("Releasing index: %d\n", idx);
 #endif                                        
-        print_state();
-        full_[idx] = false;
-        tail_[idx] = inc(tail_[idx]);
-        sem_post(&cons_sem[idx]);
+        pthread_mutex_lock(&buffer_lock);
+
+        print_state(bk);
+
+        assert(bk[idx].refcount > 0);
+        assert(bk[idx].published == 1);
+        bk[idx].refcount--;
+        pthread_mutex_unlock(&buffer_lock);
     }
 
     // This function is to be called by the producer only, to initialize the memory
     // and critical sections
-    void initialize(unsigned int num_elems)
+    void initialize(unsigned int num_elems, message_bookkeep *bk)
     {
         buf_size = num_elems;
-        num_cons = 0;
         head_ = 0;
-        for(unsigned int i=0; i< MAX_CONSUMERS; i++) {
-            tail_[i] = 0;
-            valid[i] = false;
-            full_[i] = false;
-        }
+        memset(bk, 0, sizeof(message_bookkeep)*num_elems);
 
-        int err;
+        pthread_condattr_t cattr;
+        pthread_condattr_init(&cattr);
+        pthread_condattr_setpshared(&cattr, PTHREAD_PROCESS_SHARED);
+        pthread_cond_init(&buffer_cv, &cattr);
 
-        for(unsigned int i=0; i< MAX_CONSUMERS; i++) {
-            err = sem_init(&cons_sem[i], 1, 0);
-            if (err != 0) {
-                fprintf(stderr, "Error on initializing the cons semaphore\n");
-            }
-            err = sem_init(&prod_sem[i], 1, 0);
-            if (err != 0) {
-                fprintf(stderr, "Error on initializing the cons semaphore\n");
-            }
-        }
-    }
+        pthread_mutexattr_t mattr;
+        pthread_mutexattr_init(&mattr);
+        pthread_mutexattr_setpshared(&mattr, PTHREAD_PROCESS_SHARED);
+        pthread_mutex_init(&buffer_lock, &mattr);
 
-    void initialize_consumer(unsigned int idx)
-    {
-        tail_[idx] = head_;
-        valid[idx] = true;
     }
 
 /*
