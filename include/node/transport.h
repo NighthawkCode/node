@@ -52,6 +52,11 @@ public:
     return ptr_;
   }
 
+  // Convenience operator
+  operator bool() const {
+    return ptr_ != nullptr;
+  }
+
   // Assignment operator - transfers ownership from RHS.  Use like this:
   // new_ptr = std::move(old_ptr);
   void operator=(MsgPtr &&rhs) {
