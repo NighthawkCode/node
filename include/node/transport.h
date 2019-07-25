@@ -382,12 +382,14 @@ public:
     }
 
     // Consumer: get a pointer to the next struct from the publisher
+    // This call will endeavor to get the most recent message from the
+    // publisher , and will block until it is ready
     // BLOCKING call
-    MsgPtr<T> get_message(NodeError &result)
+    MsgPtr<T> get_latest_message(NodeError &result)
     {
         // This call might block
         unsigned int elem_index;
-        result = indices->get_next_full(bk, last_index, elem_index);
+        result = indices->get_head_full(bk, elem_index);
         
         if (result == SUCCESS) {
             // This assert is a bit suspect, there is a remote corner case where the assert might fail
@@ -399,7 +401,43 @@ public:
 
         return MsgPtr<T>(nullptr, nullptr, 0);
     }
-    
+
+    // Consumer: get the most recent message but do not wait for it
+    MsgPtr<T> get_recent_message(NodeError &result)
+    {
+        // This call might block
+        unsigned int elem_index;
+        result = indices->get_next_full(bk, -1, elem_index);
+
+        if (result == SUCCESS) {
+            // This assert is a bit suspect, there is a remote corner case where the assert might fail
+            assert(last_index != elem_index);
+            last_index = elem_index;
+            return MsgPtr<T>(&elems[elem_index], this, elem_index);
+        }
+        // The most likely problem here is that the producer died, maybe check one day
+
+        return MsgPtr<T>(nullptr, nullptr, 0);
+    }
+
+    // Consumer: get the next message chronologically
+    MsgPtr<T> get_next_message(NodeError &result)
+    {
+        // This call might block
+        unsigned int elem_index;
+        result = indices->get_next_full(bk, last_index, elem_index);
+
+        if (result == SUCCESS) {
+            // This assert is a bit suspect, there is a remote corner case where the assert might fail
+            assert(last_index != elem_index);
+            last_index = elem_index;
+            return MsgPtr<T>(&elems[elem_index], this, elem_index);
+        }
+        // The most likely problem here is that the producer died, maybe check one day
+
+        return MsgPtr<T>(nullptr, nullptr, 0);
+    }
+
     // Consumer: This function assumes that the image* previously returned will no longer be used
     void release_message( MsgPtr<T>& elem )
     {

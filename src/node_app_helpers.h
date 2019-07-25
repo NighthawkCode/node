@@ -53,7 +53,8 @@ protected:
   // Check for messages and dispatch message to handler.
   NodeError CheckAndHandleMessage() override {
     NodeError res;
-    MsgPtr<TMsg> msg = sub.get_message(res);
+    // Optionally, accept a parameter to choose if to get the next, recent or latest message
+    MsgPtr<TMsg> msg = sub.get_next_message(res);
     if (res == SUCCESS) {
       assert(msg.get() != nullptr);
       assert(handler != nullptr);
