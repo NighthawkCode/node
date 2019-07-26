@@ -48,6 +48,7 @@ target_include_directories( nodelib
     )
 target_include_directories( nodelib PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/cbuf )
 target_link_libraries( nodelib PRIVATE uloglib cbuf_lib)
+target_link_libraries( nodelib PRIVATE pthread rt )
 set_target_properties( nodelib PROPERTIES CXX_STANDARD 17 )
 
 # Node app library.  This contains main and is a .so so that it can be
