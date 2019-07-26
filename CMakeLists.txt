@@ -53,8 +53,7 @@ set_target_properties( nodelib PROPERTIES CXX_STANDARD 17 )
 # Node app library.  This contains main and is a .so so that it can be
 # dlopen'd 
 add_library( nodeapp ${NODE_APP_SRCS} include/node/node_app.h )
-target_link_libraries( nodeapp PUBLIC nodelib)
-#target_link_libraries( nodeapp PRIVATE uloglib cbuf_lib)
+target_link_libraries( nodeapp PUBLIC nodelib uloglib cbuf_lib rt)
 target_include_directories( nodeapp 
     PUBLIC 
         ${CMAKE_CURRENT_SOURCE_DIR}/src 
