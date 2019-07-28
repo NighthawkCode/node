@@ -22,8 +22,8 @@ set( NODE_APP_SRCS
     src/node_app_main.cpp )
 
 include(BuildCbuf)
-build_cbuf( cbuf/image.cbuf )
-build_cbuf( cbuf/registry.cbuf )
+build_cbuf( CBUF_FILE cbuf/image.cbuf )
+build_cbuf( CBUF_FILE cbuf/registry.cbuf )
 
 #add_custom_command(
 #    OUTPUT image.h
