@@ -35,7 +35,7 @@ public:
     }
   }
 
-  int msg_number_ = 0;
+  int msg_number_ = 1;
   node::publisher<node_msg::image> image_channel_;
 };
 

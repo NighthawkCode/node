@@ -88,6 +88,7 @@ public:
         bk[head_].published = 1;
         assert(bk[head_].refcount == 0);
         head_ = (head_ + 1) % buf_size;
+        bk[head_].published = 0;
 
         print_state(bk);
 
@@ -139,14 +140,18 @@ public:
         if (last_checked_idx == -1) {
           // we try to return the latest, which would be head_ - 1.
           if (bk[prev_head].published == 1) {
-            printf("Using prev_head\n");
+#if VERBOSE_DEBUG
+            printf("Using prev_head: %d\n", prev_head);
+#endif
             bk[prev_head].refcount++;
             pthread_mutex_unlock(&buffer_lock);
             elem_index = prev_head;
             return node::SUCCESS;
           } else {
             // Handle the case where we do not have anything published yet
+#if VERBOSE_DEBUG
             printf("Using the current head\n");
+#endif
             next_idx = head_;
           }
         } else {

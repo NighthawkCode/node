@@ -30,9 +30,11 @@ public:
   MsgPtr(MsgPtr &&rhs) {
     sub_ = rhs.sub_;
     ptr_ = rhs.ptr_;
+    msg_index_ = rhs.msg_index_;
 
     rhs.sub_ = nullptr;
     rhs.ptr_ = nullptr;
+    rhs.msg_index_ = 0;
   }
 
   // Destructor.  Deallocates message.
@@ -41,7 +43,7 @@ public:
   }
 
   // Get the index
-  unsigned int getIdx() const { return msg_index; }
+  unsigned int getIdx() const { return msg_index_; }
 
   // Accessor.
   Msg *get() { return ptr_; }
@@ -65,15 +67,18 @@ public:
         assert(sub_ == rhs.sub_);
         rhs.ptr_ = nullptr;
         rhs.sub_ = nullptr;
+        rhs.msg_index_ = 0;
         return;
       }
       release();
     }
     sub_ = rhs.sub_;
     ptr_ = rhs.ptr_;
+    msg_index_ = rhs.msg_index_;
 
     rhs.sub_ = nullptr;
     rhs.ptr_ = nullptr;
+    rhs.msg_index_ = 0;
   }
 
   // Releases ownership and deallocates message.
@@ -86,7 +91,7 @@ public:
   }
 
   // Protected constructor to use by friendly Subscription class.
-  MsgPtr(Msg *m, node::subscriber<Msg> *sub, unsigned int idx) : sub_(sub), ptr_(m), msg_index(idx) {
+  MsgPtr(Msg *m, node::subscriber<Msg> *sub, unsigned int idx) : sub_(sub), ptr_(m), msg_index_(idx) {
     assert(sub_ != nullptr);
     assert(ptr_ != nullptr);
   }
@@ -94,7 +99,7 @@ public:
 private:
   node::subscriber<Msg> *sub_ = nullptr;
   Msg *ptr_ = nullptr;
-  unsigned int msg_index;
+  unsigned int msg_index_;
 };
 
 
@@ -369,7 +374,7 @@ public:
         // do setup of stuff in data now!
         indices = (circular_buffer *)data;
         bk = (message_bookkeep *)(data + sizeof(circular_buffer));
-        elems = (T *)(bk + indices->get_buf_size()*sizeof(message_bookkeep));
+        elems = (T *)(((u8 *)bk) + indices->get_buf_size()*sizeof(message_bookkeep));
 
         printf("Subscribed to topic %s\n", topic_name.c_str());
         fflush(stdout);
