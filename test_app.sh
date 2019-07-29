@@ -12,12 +12,12 @@ if [ ! -f build/apps/nodesrv ]; then
    exit 1
 fi 
 
-if [ ! -f build/test/prod_app ]; then
+if [ ! -f build/test/cons_app ]; then
    echo "prod binary could not be found"
    exit 1
 fi 
 
-if [ ! -f build/test/cons_app ]; then
+if [ ! -f build/test/prod_app ]; then
    echo "prod binary could not be found"
    exit 1
 fi 

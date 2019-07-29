@@ -151,10 +151,10 @@ protected:
   };
 
   template<typename TMsg>
-  node::publisher<TMsg> *Provides(const std::string &topic) {
+  node::publisher<TMsg> *Provides(const std::string &topic, int num_messages) {
     node::publisher<TMsg> *channel = new node::publisher<TMsg>;
     *channel = core_.provides<TMsg>(topic);
-    node::NodeError res = channel->open();
+    node::NodeError res = channel->open(num_messages);
     assert(res == node::SUCCESS);
     node::publisher_base *base = dynamic_cast<node::publisher_base *>(channel);
     publishers_[typeid(TMsg).hash_code()][topic].reset(base);
@@ -189,6 +189,7 @@ protected:
   template <typename TApp, typename TMsg>
   int Subscribe(MessagePtrHandler<TApp, TMsg> h,
                 const std::string &topic,
+                SubscriptionPolicy policy = SubscriptionPolicy::WAIT_NEXT,
                 float msg_timeout_sec = NODE_DEFAULT_MSG_WAIT_SEC,
                 float connect_timeout_sec = NODE_WAIT_FOREVER) {
     node::subscriber<TMsg> sub = core_.subscribe<TMsg>(topic);
@@ -198,7 +199,7 @@ protected:
       Subscription<TApp,TMsg> *subscription =
         new Subscription<TApp,TMsg>(dynamic_cast<TApp *>(this), h,
                                     std::move(sub),
-                                    msg_timeout_sec);
+                                    msg_timeout_sec, policy);
       subscriptions_.emplace_back(subscription);
     } else {
       SetState(FAILED);
