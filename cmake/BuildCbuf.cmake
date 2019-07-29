@@ -21,6 +21,7 @@ macro( build_cbuf )
         set(outdir ${CBUF_OUTPUT_DIR})
     endif()
 
+    set(incs "")
     list(APPEND incs "-I${CMAKE_CURRENT_SOURCE_DIR}/${srcdir}")
     foreach( incdir ${CBUF_INCLUDE_DIR})
         list(APPEND incs "-I${incdir}")
