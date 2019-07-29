@@ -54,7 +54,7 @@ public:
     usleep(10000);
     
     fflush(stdout);
-    if (++msg_count == 50) {
+    if (++msg_count == 500) {
       SetState(FINISHED);
     }
     printf("done\n");

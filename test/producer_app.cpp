@@ -9,7 +9,7 @@ using namespace node;
 class ProducerNode : public NodeApp {
 public:
   ProducerNode(const std::string topic) {
-    Provides<node_msg::image>(topic);
+    Provides<node_msg::image>(topic, 100);
     usleep(2000000);
   }
 
@@ -17,7 +17,7 @@ public:
     printf(" - Acquiring data (%d)... ", msg_number_);
     fflush(stdout);
     auto img = PrepareMessage<node_msg::image>();
-    printf("Previous value of rows: %d ", img->rows);
+
     img->rows = msg_number_;
     img->cols = 3+msg_number_;
     img->format = 12;
@@ -28,9 +28,9 @@ public:
     fflush(stdout);
     TransmitMessage(img);
     printf(" PUBLISHED!\n");
-    usleep(1000000);
+    usleep(10000);
     msg_number_++;
-    if (msg_number_ == 50) {
+    if (msg_number_ == 1000) {
       SetState(FINISHED);
     }
   }
