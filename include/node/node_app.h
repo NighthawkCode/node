@@ -151,7 +151,8 @@ protected:
   };
 
   template<typename TMsg>
-  node::publisher<TMsg> *Provides(const std::string &topic, int num_messages) {
+  node::publisher<TMsg> *Provides(const std::string &topic,
+                                  int num_messages = 10) {
     node::publisher<TMsg> *channel = new node::publisher<TMsg>;
     *channel = core_.provides<TMsg>(topic);
     node::NodeError res = channel->open(num_messages);
