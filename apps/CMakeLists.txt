@@ -19,3 +19,5 @@ target_link_libraries( nodesrv PRIVATE nodecore nodelib cbuf_lib pthread rt)
 add_executable( node nodecli.cpp registry.h)
 target_include_directories( node PRIVATE ${CMAKE_CURRENT_BINARY_DIR} )
 target_link_libraries( node PRIVATE nodelib cbuf_lib pthread rt)
+
+install(TARGETS node nodesrv DESTINATION bin)
