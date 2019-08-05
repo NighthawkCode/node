@@ -1,11 +1,35 @@
 #pragma once
 #include "node/core.h"
-#include "node_app_helpers.h"
 
 #include <unordered_map>
 #include <memory>
 #include <vector>
 #include <functional>
+
+// Queuing/blocking policy for subscriptions.
+// - POLL_NEWEST is suggested ONLY when using multiple input sources
+//   (subscriptions, or waiting/sleeping for hardware devices).  If used with
+//   only one input and no delay, this will busy-wait, which wastes CPU.
+// - POLL_OLDEST is suggested ONLY when using multiple input sources
+//   (subscriptions, or waiting/sleeping for hardware devices).  If used with
+//   only one input and no delay, this will busy-wait, which wastes CPU.
+// - BLOCK_NEXT will block until a new message arrives (even if the queue
+//   is not empty)
+//   newest message in the queue once it's not empty.
+// - BLOCK_OLDEST will block if the queue is empty, and returns the
+//   oldest message.
+namespace node {
+
+  enum class SubscriptionPolicy {
+  POLL_NEWEST,   // Poll for the most recent message
+  POLL_OLDEST,   // Poll for the oldest message
+  BLOCK_NEXT,    // Blocking wait for next message to arrive
+  BLOCK_OLDEST,  // Blocking wait for message to arrive; read oldest
+};
+
+}
+
+#include "node_app_helpers.h"
 
 namespace node {
 
@@ -190,7 +214,8 @@ protected:
   template <typename TApp, typename TMsg>
   int Subscribe(MessagePtrHandler<TApp, TMsg> h,
                 const std::string &topic,
-                SubscriptionPolicy policy = SubscriptionPolicy::WAIT_NEXT,
+                SubscriptionPolicy policy =
+                SubscriptionPolicy::BLOCK_NEXT,
                 float msg_timeout_sec = NODE_DEFAULT_MSG_WAIT_SEC,
                 float connect_timeout_sec = NODE_WAIT_FOREVER) {
     node::subscriber<TMsg> sub = core_.subscribe<TMsg>(topic);
