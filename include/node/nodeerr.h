@@ -20,7 +20,8 @@ enum NodeError
     SHARED_MEMORY_OPEN_ERROR     = 13,
     CONSUMER_LIMIT_EXCEEDED      = 14,
     PRODUCER_NOT_PRESENT         = 15,
-    CONSUMER_TIME_OUT            = 16
+    CONSUMER_TIME_OUT            = 16,
+    CBUF_MSG_NOT_SUPPORTED       = 17
 };
 
 }
