@@ -173,6 +173,10 @@ public:
         nodelib node_lib;
         topic_info info;
 
+        if (!T::is_simple()) {
+            return CBUF_MSG_NOT_SUPPORTED;
+        }
+
         res = node_lib.open();
         if (res != SUCCESS) {
             return res;
