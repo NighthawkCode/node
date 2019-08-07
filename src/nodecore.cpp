@@ -178,6 +178,9 @@ int nodecore_main()
                 reply.status = node_msg::SUCCESS;
                 TopicInfoToReply(inf, reply);
             }
+        } else if (request.action == node_msg::GET_SESSION_PATH) {
+            reply.status = node_msg::SUCCESS;
+            reply.topic_name = reg.get_session_path();
         } else {
             reply.status = node_msg::REQUEST_INVALID;
         }

@@ -2,12 +2,14 @@
 
 #include "nodelib.h"
 #include <vector>
+#include <string>
 
 namespace node {
 
 class node_registry
 {
     std::vector<topic_info> topics;
+    std::string session_path;
 
 public:
     // Get the number of open topics on the system
@@ -33,6 +35,8 @@ public:
 
     // Find the topic and make it visible
     bool make_topic_visible(const topic_info& info);
+
+    const std::string& get_session_path();
 };
 
 }

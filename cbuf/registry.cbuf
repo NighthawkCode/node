@@ -10,6 +10,7 @@ namespace node_msg
         NUM_TOPICS,
         TOPIC_AT_INDEX,
         TOPIC_BY_NAME,
+        GET_SESSION_PATH,
     }
 
     enum RequestStatus
@@ -40,7 +41,7 @@ namespace node_msg
     {
         RequestStatus status;
         u32     num_topics; // for the NUM_TOPICS query
-        string  topic_name;
+        string  topic_name; // Overloaded with session path
         string  msg_name;
         u64     msg_hash;
         string  chn_path;
