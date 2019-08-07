@@ -85,7 +85,8 @@ static const char *RequestTypeToStr[] = {
     "ADVERTISE_TOPIC",
     "NUM_TOPICS",
     "TOPIC_AT_INDEX",
-    "TOPIC_BY_NAME"
+    "TOPIC_BY_NAME",
+    "GET_SESSION_PATH"
 };
 
 static const char *RequestStatusToStr[] = {
@@ -354,6 +355,26 @@ NodeError nodelib::get_topic_info(const std::string& name, topic_info& info)
     info.cn_info.channel_size = reply.chn_size;
     return SUCCESS;
 }
+
+// Get the path to the current session
+NodeError nodelib::get_session_path(std::string& session_path)
+{
+    node_msg::registry_request req = {};
+    node_msg::registry_reply reply = {};
+
+    req.action = node_msg::GET_SESSION_PATH;
+
+    auto ret = send_request(hostname, req, reply);
+    if (ret != SUCCESS) return ret;
+
+    if (reply.status != node_msg::SUCCESS) {
+        return RequestStatusToNodeError(reply.status);
+    }
+
+    session_path = reply.topic_name;
+    return SUCCESS;
+}
+
 
 /// This function is meant to create the shared memory for a shm_channel
 //  It returns a pointer to the mapped memory for sharing
