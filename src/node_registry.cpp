@@ -1,5 +1,24 @@
 #include "node_registry.h"
 #include "process.h"
+#include <unistd.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <linux/limits.h>
+#include <string>
+#include <iostream>
+#include <sstream>
+#include <fstream>
+#include <streambuf>
+
+static
+bool file_exists( const char* filepath )
+{
+  struct stat status;
+  if( stat( filepath, &status ) == 0 && S_ISREG( status.st_mode ) ) {
+    return true;
+  }
+  return false;
+}
 
 namespace node {
 
@@ -89,6 +108,36 @@ bool node_registry::get_topic_info(const std::string& name, topic_info& info)
         }
     }
     return false;
+}
+
+const std::string& node_registry::get_session_path()
+{
+    if (session_path.empty()) {
+        time_t rawtime;
+        struct tm *info;
+        time( &rawtime );
+        info = localtime( &rawtime );
+
+        char robot_name[64] = {};
+
+        strcpy(robot_name, "unknown");
+        std::stringstream sbuffer;
+
+        if (file_exists( "/etc/robot_name" )) {
+          std::ifstream t("/etc/robot_name");
+          sbuffer << t.rdbuf();
+          std::string tstr = sbuffer.str();
+          if (tstr[tstr.size()-1] == '\n') tstr[tstr.size()-1] = 0;
+          strcpy(robot_name, tstr.c_str());
+        }
+
+        char buffer[PATH_MAX];
+        memset(buffer, 0, sizeof(buffer));
+        sprintf(buffer, "%s-%d.%02d.%02d.%02d.%02d.ulog", robot_name,
+                info->tm_year + 1900, info->tm_mon + 1, info->tm_mday, info->tm_hour, info->tm_min );
+        session_path = buffer;
+    }
+    return session_path;
 }
 
 }

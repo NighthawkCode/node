@@ -47,7 +47,7 @@ target_include_directories( nodelib
         ${CMAKE_CURRENT_SOURCE_DIR}/include 
     )
 target_include_directories( nodelib PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/cbuf )
-target_link_libraries( nodelib PRIVATE cbuf_lib vlog)
+target_link_libraries( nodelib PRIVATE cbuf_lib vlog )
 target_link_libraries( nodelib PRIVATE pthread rt )
 set_target_properties( nodelib PROPERTIES CXX_STANDARD 17 )
 

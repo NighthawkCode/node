@@ -48,6 +48,8 @@ public:
     NodeError get_topic_info(const std::string& name, topic_info& info);
 
     NodeError make_topic_visible(const std::string& name);
+
+    NodeError get_session_path(std::string& session_path);
 };
 
 }
