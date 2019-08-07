@@ -112,12 +112,7 @@ public:
         }
       } else {
         int next_idx = inc(last_checked_idx);
-        if (bk[next_idx].published == 1) {
-          return next_idx;
-        } else {
-          // go and try with the -1 version
-          return get_next_index(bk, -1);
-        }
+        return next_idx;
       }
     }
 
@@ -180,6 +175,11 @@ public:
           elem_index = next_idx;
           return node::SUCCESS;
         }
+
+#if VERBOSE_DEBUG
+        printf("Going to wait for next_idx %d to become available\n", next_idx);
+#endif
+
         pthread_cond_wait(&buffer_cv, &buffer_lock);
         assert(bk[next_idx].published == 1);
         bk[next_idx].refcount++;
