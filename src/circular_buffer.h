@@ -112,12 +112,7 @@ public:
         }
       } else {
         int next_idx = inc(last_checked_idx);
-        if (bk[next_idx].published == 1) {
-          return next_idx;
-        } else {
-          // go and try with the -1 version
-          return get_next_index(bk, -1);
-        }
+        return next_idx;
       }
     }
 
@@ -130,7 +125,7 @@ public:
     // last_checked_idx in this case is eitehr -1 or the index for the last elem checked
     // out by this subscriber. get_next_full will look for the very next if it exists
     // this is a BLOCKING call
-    node::NodeError get_next_full(message_bookkeep *bk, int last_checked_idx, unsigned int &elem_index)
+    node::NodeError get_next_published(message_bookkeep *bk, int last_checked_idx, unsigned int &elem_index)
     {
         int next_idx;
         pthread_mutex_lock(&buffer_lock);
@@ -141,7 +136,7 @@ public:
           // we try to return the latest, which would be head_ - 1.
           if (bk[prev_head].published == 1) {
 #if VERBOSE_DEBUG
-            printf("Using prev_head: %d\n", prev_head);
+            printf("Using prev_head: %d because it has been published\n", prev_head);
 #endif
             bk[prev_head].refcount++;
             pthread_mutex_unlock(&buffer_lock);
@@ -156,52 +151,36 @@ public:
           }
         } else {
           next_idx = inc(last_checked_idx);
-          if (bk[next_idx].published == 1) {
-            printf("Using next_id, last checked +1\n");
-            bk[next_idx].refcount++;
-            pthread_mutex_unlock(&buffer_lock);
-            elem_index = next_idx;
-            return node::SUCCESS;
-          } else {
+          if (bk[next_idx].published != 1) {
             if (bk[last_checked_idx].published != 1) {
               // Fallback here since the last checked index was not published, meaning we are lost and we reset
+#if VERBOSE_DEBUG
               printf("Fallback to minus 1, the head. Last checked id was: %d, bk[last] = %d ; bk[next] = %d\n",
                      last_checked_idx, bk[last_checked_idx].published, bk[next_idx].published);
+#endif
               // go and try with the -1 version
               pthread_mutex_unlock(&buffer_lock);
-              return get_next_full(bk, -1, elem_index);
+              return get_next_published(bk, -1, elem_index);
             }
             // Fall through to the case where we wait for next_idx
           }
         }
 
         if (bk[next_idx].published == 1) {
+#if VERBOSE_DEBUG
+            printf("Using next_id %d, last checked was %d\n", next_idx, last_checked_idx);
+#endif
           bk[next_idx].refcount++;
           pthread_mutex_unlock(&buffer_lock);
           elem_index = next_idx;
           return node::SUCCESS;
         }
+
+#if VERBOSE_DEBUG
+        printf("Going to wait for next_idx %d to become available\n", next_idx);
+#endif
+
         pthread_cond_wait(&buffer_cv, &buffer_lock);
-        assert(bk[next_idx].published == 1);
-        bk[next_idx].refcount++;
-        pthread_mutex_unlock(&buffer_lock);
-        elem_index = next_idx;
-        return node::SUCCESS;
-    }
-
-    node::NodeError get_head_full(message_bookkeep *bk, unsigned int &elem_index)
-    {
-        int next_idx = head_;
-        pthread_mutex_lock(&buffer_lock);
-
-        print_state(bk);
-        if (bk[next_idx].published == 1) {
-          next_idx = inc(next_idx);
-        }
-
-        assert(bk[next_idx].published != 1);
-        pthread_cond_wait(&buffer_cv, &buffer_lock);
-
         assert(bk[next_idx].published == 1);
         bk[next_idx].refcount++;
         pthread_mutex_unlock(&buffer_lock);

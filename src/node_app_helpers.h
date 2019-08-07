@@ -60,24 +60,22 @@ protected:
     MsgPtr<TMsg> msg;
     switch(policy_) {
     case SubscriptionPolicy::POLL_NEWEST:
+      sub.reset_message_index();
       if (sub.is_there_new()) {
-        msg = sub.get_recent_message(res);
+        msg = sub.get_message(res);
       } else {
         return NodeError::CONSUMER_TIME_OUT;
       }
       break;
     case SubscriptionPolicy::POLL_OLDEST:
       if (sub.is_there_new()) {
-        msg = sub.get_next_message(res);
+        msg = sub.get_message(res);
       } else {
         return NodeError::CONSUMER_TIME_OUT;
       }
       break;
     case SubscriptionPolicy::BLOCK_NEXT:
-      msg = sub.get_latest_message(res);
-      break;
-    case SubscriptionPolicy::BLOCK_OLDEST:
-      msg = sub.get_next_message(res);
+      msg = sub.get_message(res);
       break;
     default:
       assert(false);
