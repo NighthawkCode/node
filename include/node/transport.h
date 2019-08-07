@@ -226,7 +226,8 @@ public:
     {
         // This call might block
         unsigned int elem_index = indices->get_next_empty(bk);
-        return &elems[elem_index];
+        T* e = new (&elems[elem_index]) T();
+        return e;
     }
     
     // Producer: This function assumes that the image* previously returned will no longer be used
@@ -268,7 +269,6 @@ class subscriber
     u32 mem_length = 0;
     T*  elems = nullptr;  
     u32 pid = 0;
-    s32 checked_index = -1; // Temp variable until we use the new MsgPtr class
     s32 last_index = -1;
 
     std::string topic_name;
@@ -395,51 +395,26 @@ public:
       return indices->is_index_available(bk, idx);
     }
 
-    // Consumer: get a pointer to the next struct from the publisher
-    // This call will endeavor to get the most recent message from the
-    // publisher , and will block until it is ready
-    // BLOCKING call
-    MsgPtr<T> get_latest_message(NodeError &result)
+    void reset_message_index()
     {
-        // This call might block
-        unsigned int elem_index;
-        result = indices->get_head_full(bk, elem_index);
-        
-        if (result == SUCCESS) {
-            // This assert is a bit suspect, there is a remote corner case where the assert might fail
-            assert(last_index != elem_index);
-            last_index = elem_index;
-            return MsgPtr<T>(&elems[elem_index], this, elem_index);
-        }
-        // The most likely problem here is that the producer died, maybe check one day
-
-        return MsgPtr<T>(nullptr, nullptr, 0);
+        last_index = -1;
     }
 
-    // Consumer: get the most recent message but do not wait for it
-    MsgPtr<T> get_recent_message(NodeError &result)
+    ///
+    /// \brief get_message
+    /// \param result is an error value
+    /// \return The message itself
+    ///
+    /// This function will obtain a message for the consumer.
+    /// If <last_index> is -1, it will obtain the most recently published message
+    /// If <last_index> is not -1, it will try to obtain the message at last_index+1
+    /// Call `reset_message_index` to always obtain the most recent one
+    ///
+    MsgPtr<T> get_message(NodeError &result)
     {
         // This call might block
         unsigned int elem_index;
-        result = indices->get_next_full(bk, -1, elem_index);
-
-        if (result == SUCCESS) {
-            // This assert is a bit suspect, there is a remote corner case where the assert might fail
-            assert(last_index != elem_index);
-            last_index = elem_index;
-            return MsgPtr<T>(&elems[elem_index], this, elem_index);
-        }
-        // The most likely problem here is that the producer died, maybe check one day
-
-        return MsgPtr<T>(nullptr, nullptr, 0);
-    }
-
-    // Consumer: get the next message chronologically
-    MsgPtr<T> get_next_message(NodeError &result)
-    {
-        // This call might block
-        unsigned int elem_index;
-        result = indices->get_next_full(bk, last_index, elem_index);
+        result = indices->get_next_published(bk, last_index, elem_index);
 
         if (result == SUCCESS) {
             // This assert is a bit suspect, there is a remote corner case where the assert might fail
