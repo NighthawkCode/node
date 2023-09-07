@@ -1,0 +1,13 @@
+namespace rpc_msg_test
+{
+  struct request
+  {
+    f64 a;
+    f64 b;
+  }
+
+  struct reply
+  {
+    f64 c;
+  }
+}

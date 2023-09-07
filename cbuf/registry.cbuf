@@ -1,52 +1,150 @@
 
-// Use namespaces for encapsulation, like in C++. 
+// Use namespaces for encapsulation, like in C++.
 // Close the namespace at the end
-namespace node_msg
+namespace node
 {
-    enum RequestType
+    enum class RequestType
     {
-        CREATE_TOPIC,
-        ADVERTISE_TOPIC,
+        CREATE_TOPICS,
+        ADVERTISE_TOPICS,
         NUM_TOPICS,
         TOPIC_AT_INDEX,
         TOPIC_BY_NAME,
-        GET_SESSION_PATH,
+        GET_SESSION_NAME,
+        GET_NEW_SESSION_NAME,
+        GET_LOG_PATH,
+        GET_LOG_FOLDER,
+        GET_PEER_LOG_PATH,
+        RESET_LOG_PATH,
+        GET_TOPICS,
+        GET_NETWORK_TOPICS,
+        ANNOUNCE_NETWORK_TOPICS,
+        ANNOUNCE_SESSION_NAME,
+        GET_PEER_LIST,
+        ANNOUNCE_RECONNECT,
+        GET_NODEMASTER_INFO,
+        REQUEST_TERMINATION,
+        GET_VALUE,
+        SET_VALUE,
+        UPDATE_STORE,
+        GET_STORE,
+        UPDATE_PEERS,
+        REQUEST_SHUTDOWN
     }
 
-    enum RequestStatus
+    enum class RequestStatus
     {
         SUCCESS,
         TOPIC_NOT_FOUND,
         INDEX_OUT_OF_BOUNDS,
         REQUEST_INVALID,
+        TOPIC_COULD_NOT_BE_MADE_VISIBLE,
         GENERIC_ERROR,
+        KEY_NOT_FOUND,
+        UNAUTHORIZED
     }
 
-    // This is a POD, a simple structure
-    // Prefer POD, they are much faster for serdes
-    struct registry_request 
+    enum class TopicType
+    {
+        UNKNOWN,
+        PUB_SUB,
+        RPC,
+        SINK_SRC
+    }
+
+    enum class RpcInternalRequestType
+    {
+        NUM_REQUESTS_HANDLED,
+        TERMINATE_RPC
+    }
+
+    struct channel_info
+    {
+        u32     is_network = 0;    // is it a network channel
+
+        // These fields only apply to SHM channels
+        string  channel_path;
+        u32     channel_size;
+        string  channel_notify;
+
+        // These fields only apply to network channels
+
+        string  channel_ip;
+        u16     channel_port;
+        int     timeout_ms; // timeout while a transmitting message
+    }
+
+    struct rpc_info {
+        string        request_type_name;
+        string        reply_type_name;
+        string        request_cbuftxt;
+        string        reply_cbuftxt;
+        u64           request_type_hash;
+        u64           reply_type_hash;
+    }
+
+    struct topic_info {
+        string        topic_name;
+        string        msg_name;
+        u64           msg_hash;
+        u32           publisher_pid;
+        u32           num_elems;
+        TopicType     type;
+        channel_info  cn_info;
+        rpc_info      rp_info;
+        string        msg_cbuftxt;
+        bool          visible = false;    // for topic creation, do we want it visible now?
+        bool          allow_hash_mismatch = false; // allow subscribers to have a hash mismatch
+    }
+
+    struct store {
+        string keys[];
+        string values[];
+        string owner;
+    }
+
+    struct registry_request
     {
         RequestType action; // is this request to create or get a topic?
-        u32     topic_index; // to be used when querying by index
-        string  topic_name;
-        string  msg_name;
-        u64     msg_hash;
-        string  chn_path;
-        u32     chn_size;
-        u32     publisher_pid;
+        u32         topic_index; // to be used when querying by index
+        string      topic_name; // used when querying a topic by name
+        string      host_ip; // possible IP of the sender of this request
+        topic_info  topics[];
         u32     cli; // special control for command line and debug
+        store update_req[];
+        bool all;
+        string search_term;
     }
 
     struct registry_reply
     {
         RequestStatus status;
-        u32     num_topics; // for the NUM_TOPICS query
-        string  topic_name; // Overloaded with session path
-        string  msg_name;
-        u64     msg_hash;
-        string  chn_path;
-        u32     chn_size;
-        u32     publisher_pid;
-        u32     visible;
+        u32           num_topics; // for the NUM_TOPICS query
+        string        text_reply; // Can be session name, log path
+        topic_info    topics[];
+        RequestStatus topic_statuses[];
+        string        peers[];        // Total peers we know about
+        string        active_peers[]; // Peers active, only deal with these unless trying to find more peers
+        double        uptime;
+        s32           nodemaster_pid;
+        store store_rep[];
+    }
+
+    struct rpc_internal_request
+    {
+        RpcInternalRequestType type;
+    }
+
+    struct rpc_internal_reply
+    {
+        // We can always extend this, this message allows for out of band communication
+        // on Requester, responder
+        u32       num_requests_handled; // How many requests have been handled overall
+        u32       return_code; // NodeError
+    }
+
+    struct oob_msg
+    {
+        u32       crc;
     }
 }

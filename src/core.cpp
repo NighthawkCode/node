@@ -1,6 +1,3 @@
 #include "node/core.h"
 
-namespace node {
-
-
-}
+namespace node {}

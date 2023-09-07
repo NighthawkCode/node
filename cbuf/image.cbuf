@@ -1,11 +1,11 @@
 
-// Use namespaces for encapsulation, like in C++. 
+// Use namespaces for encapsulation, like in C++.
 // Close the namespace at the end
 namespace node_msg
 {
     // This is a POD, a simple structure
     // Prefer POD, they are much faster for serdes
-    struct image 
+    struct image
     {
         u32     rows;
         uint32  cols;
@@ -14,5 +14,11 @@ namespace node_msg
         double  timestamp;
         u32     pixels[256];  // raw data
     }
-
+    struct var_image
+    {
+        u32 val;
+        u32 rows;
+        double timestamp;
+        u32 data[];
+    }
 }

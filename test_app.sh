@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # makesure we are running on a clean system
-killall -q nodesrv 
+killall -q nodesrv
 killall -q prod_app
 killall -q cons_app
 
@@ -10,17 +10,17 @@ rm -f *_log.txt
 if [ ! -f build/apps/nodesrv ]; then
    echo "nodesrv binary could not be found"
    exit 1
-fi 
+fi
 
 if [ ! -f build/test/cons_app ]; then
    echo "prod binary could not be found"
    exit 1
-fi 
+fi
 
 if [ ! -f build/test/prod_app ]; then
    echo "prod binary could not be found"
    exit 1
-fi 
+fi
 
 
 # Launch our core
@@ -65,9 +65,9 @@ if [ "$?" -ne "0" ]; then
   GOOD=0
 fi
 
-if [ "$GOOD" -eq "1" ]; then 
+if [ "$GOOD" -eq "1" ]; then
   echo "SUCCESS on test"
-else 
+else
   echo "FAILURE on test"
 fi
 

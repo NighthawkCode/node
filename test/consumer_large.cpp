@@ -16,7 +16,6 @@ void Usage() {
 
 int main(int argc, char** argv) {
   node::core core;
-
   int count = 350;
 
   for (int i = 1; i < argc; i++) {
@@ -35,8 +34,8 @@ int main(int argc, char** argv) {
 
   printf("Hello, I am a consumer of messages\n");
 
-  auto image_channel = core.subscribe<node_msg::image>("topic");
-  image_channel->set_node_name("consumer test");
+  auto image_channel = core.subscribe<node_msg::var_image>("topic2");
+  image_channel->set_node_name("large consumer test");
 
   node::NodeError res = image_channel->open();
   if (res != node::SUCCESS) {
@@ -59,14 +58,15 @@ int main(int argc, char** argv) {
     }
   }
 
-  unsigned int val = 0;
-  bool first_val = false;
+  unsigned int value = 0;
+  bool initial_vals = false;
+  int initial = 0;
 
   printf("Now starting consumer \n");
   fflush(stdout);
   for (int it = 0; it < count; it++) {
-    node::MsgPtr<node_msg::image> msg = image_channel->get_message(res);
-    node_msg::image img = *msg;
+    node::MsgPtr<node_msg::var_image> msg = image_channel->get_message(res);
+    node_msg::var_image img = *msg;
 
     printf(" releasing data ... ");
     fflush(stdout);
@@ -78,7 +78,7 @@ int main(int argc, char** argv) {
     while (res != node::SUCCESS) {
       printf("Timed out (%d), waiting\n", timeout);
       fflush(stdout);
-      first_val = false;
+      initial_vals = false;
       if (++timeout > 5) {
         // Likely the producer is no longer around
         printf(" No data received in a while, terminating ...\n");
@@ -86,13 +86,15 @@ int main(int argc, char** argv) {
       }
       res = image_channel->open(1.0, 1.0, 0.0);
       if (res == node::SUCCESS) {
-        node::MsgPtr<node_msg::image> msg = image_channel->get_message(res);
+        node::MsgPtr<node_msg::var_image> msg = image_channel->get_message(res);
         img = *msg;
+
         printf(" releasing data ... ");
         fflush(stdout);
         image_channel->release_message(msg);
         printf(" RELEASED!\n");
       }
+      usleep(1000000);
     }
 
     printf(" - Acquiring data (%d)... ", it);
@@ -100,20 +102,22 @@ int main(int argc, char** argv) {
 
     double now = time_now();
 
-    printf("Value of rows: %d (expected %d), time diff: %f us\n", img.rows, val + 1,
+    printf("Value of rows: %d (expected %d), time diff: %f us\n", img.val, value + 1,
            (now - img.timestamp) * 1000000.0);
     fflush(stdout);
-    if (!first_val) {
-      val = img.rows;
-      first_val = true;
+    if (!initial_vals or initial < 2) {
+      value = img.val;
+      initial += 1;
+      // initial_vals = true;
     } else {
+      initial_vals = true;
       // Very simple way to check that we are receiving in order and not missing
-      assert(img.rows == val + 1);
-      val = img.rows;
+      assert(img.val == value + 1);
+      value = img.val;
     }
     // maybe do something with img here
 
-    usleep(1000);
+    usleep(100000);
   }
 
   return 0;

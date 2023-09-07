@@ -1,4 +1,0 @@
-bazel-*
-.vscode/
-build/
-CMakeLists.txt.user
