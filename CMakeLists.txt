@@ -9,8 +9,8 @@ include(AddTest)
 
 include("BuildSettings.cmake")
 
-fetch_dependency(vlog "https://git.martian.ag/open-source/vlog.git" "master")
-fetch_dependency(cbuf "https://git.martian.ag/open-source/cbuf.git" "master")
+fetch_dependency(vlog "https://github.com/Verdant-Robotics/vlog.git" "main")
+fetch_dependency(cbuf "https://github.com/Verdant-Robotics/cbuf.git" "main")
 
 set(NODE_SRCS src/nodemaster_main.cpp src/nodelib.cpp src/node_registry.cpp
               src/process.cpp src/core.cpp src/node_utils.cpp src/crc.cpp src/nodemaster_utils.cpp)

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.13.0)
 
-fetch_dependency(toolbox "https://git.martian.ag/open-source/toolbox.git" "master")
+fetch_dependency(toolbox "https://github.com/Verdant-Robotics/toolbox.git" "main")
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_library(nodecore INTERFACE)
