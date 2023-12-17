@@ -28,4 +28,4 @@ private:
 
 #define CONCAT_(a, b) a##b
 #define CONCAT(a, b) CONCAT_(a, b)
-#define DEFER(fn) ScopeGuard CONCAT(__defer__, __LINE__) = [&]() { fn; }
+#define DEFER(fn) ScopeGuard CONCAT(internal_defer_macro_, __LINE__) = [&]() { fn; }

@@ -26,8 +26,11 @@
 
 #define DEBUG 0
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreserved-identifier"
 // Glibc provides this
 extern char* __progname;
+#pragma clang diagnostic pop
 
 static inline std::unordered_set<std::string> splitset(const std::string& s, char seperator) {
   std::unordered_set<std::string> output;
