@@ -300,7 +300,7 @@ public:
       return -1;
     }
 
-    return subscriptions_.size() - 1;
+    return int(subscriptions_.size()) - 1;
   }
 
   // Subscribe to a message.  Type of handler should be:

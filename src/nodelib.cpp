@@ -745,14 +745,14 @@ void helper_clean(void* addr, int mem_fd, u32 mem_length) {
 }
 
 publisher_impl_shm::publisher_impl_shm(u32 num_el, u32 elem_size) {
-  aligned_elem_size = (elem_size + 15) & ~0x0F;
-  num_elems = num_el;
+  aligned_elem_size_ = (elem_size + 15) & ~0x0F;
+  num_elems_ = num_el;
 }
 
 void publisher_impl_shm::fill_channel_info(topic_info& info) {
   u32 sz = (sizeof(circular_buffer)                 // One circular buffer
-            + num_elems * sizeof(message_bookkeep)  // bookkeep data
-            + num_elems * aligned_elem_size);       // the actual elements
+            + num_elems_ * sizeof(message_bookkeep)  // bookkeep data
+            + num_elems_ * aligned_elem_size_);       // the actual elements
   sz += 32;
   u32 remainder = sz % 1024;
   if (remainder != 0) {
@@ -769,48 +769,48 @@ void publisher_impl_shm::fill_channel_info(topic_info& info) {
 }
 
 NodeError publisher_impl_shm::open(const topic_info* info) {
-  VLOG_ASSERT(aligned_elem_size > 0, "Aligned elem size can never be zero");
+  VLOG_ASSERT(aligned_elem_size_ > 0, "Aligned elem size can never be zero");
 
-  data = (u8*)helper_open_channel(info->cn_info, mem_fd);
-  if (!data) {
+  data_ = (u8*)helper_open_channel(info->cn_info, mem_fd_);
+  if (!data_) {
     vlog_error(VCAT_NODE, "Could not open the shared memory");
     return SHARED_MEMORY_OPEN_ERROR;
   }
 
-  mem_length = info->cn_info.channel_size;
+  mem_length_ = info->cn_info.channel_size;
 
-  notify_fd = ::open(info->cn_info.channel_notify.c_str(), O_CREAT | O_RDWR, 0644);
-  if (notify_fd == -1) {
+  notify_fd_ = ::open(info->cn_info.channel_notify.c_str(), O_CREAT | O_RDWR, 0644);
+  if (notify_fd_ == -1) {
     vlog_error(VCAT_NODE, "Could not open the file %s for notification: %d - %s",
                info->cn_info.channel_notify.c_str(), errno, strerror(errno));
     return NOTIFY_FILE_OPEN_ERROR;
   }
 
   // do setup of stuff in data now!
-  indices = (circular_buffer*)data;
-  bk = (message_bookkeep*)(data + sizeof(circular_buffer));
-  elems = ((u8*)data + sizeof(circular_buffer) + num_elems * sizeof(message_bookkeep));
-  elems += 15;
-  elems = (u8*)(((uintptr_t)elems) & ~0x0F);
-  indices->initialize(num_elems, aligned_elem_size, bk);
-  VLOG_ASSERT(aligned_elem_size == indices->get_aligned_elem_size(), "Ensure we have the size we indicated");
+  indices_ = (circular_buffer*)data_;
+  bk_ = (message_bookkeep*)(data_ + sizeof(circular_buffer));
+  elems_ = ((u8*)data_ + sizeof(circular_buffer) + num_elems_ * sizeof(message_bookkeep));
+  elems_ += 15;
+  elems_ = (u8*)(((uintptr_t)elems_) & ~0x0F);
+  indices_->initialize(num_elems_, aligned_elem_size_, bk_);
+  VLOG_ASSERT(aligned_elem_size_ == indices_->get_aligned_elem_size(), "Ensure we have the size we indicated");
   return SUCCESS;
 }
 
 u8* publisher_impl_shm::get_memory_for_message() {
   // This call might block
-  unsigned int elem_index = indices->get_next_empty(bk);
+  unsigned int elem_index = indices_->get_next_empty(bk_);
   // See http://lists.llvm.org/pipermail/cfe-dev/2012-July/023422.html
   // Do not put the () here!!
-  return &elems[elem_index * aligned_elem_size];
+  return &elems_[elem_index * aligned_elem_size_];
 }
 
 bool publisher_impl_shm::transmit_message(const u8*, size_t) {
-  indices->publish(bk);
-  if (notify_fd != -1) {
+  indices_->publish(bk_);
+  if (notify_fd_ != -1) {
     char c = 1;
-    ::lseek(notify_fd, SEEK_SET, 0);
-    const auto written_n = ::write(notify_fd, &c, 1);
+    ::lseek(notify_fd_, SEEK_SET, 0);
+    const auto written_n = ::write(notify_fd_, &c, 1);
     assert(written_n == 1);
     (void)written_n;
   }
@@ -818,53 +818,53 @@ bool publisher_impl_shm::transmit_message(const u8*, size_t) {
 }
 
 void publisher_impl_shm::close() {
-  helper_clean(data, mem_fd, mem_length);
-  if (notify_fd != -1) {
-    ::close(notify_fd);
-    notify_fd = -1;
+  helper_clean(data_, mem_fd_, mem_length_);
+  if (notify_fd_ != -1) {
+    ::close(notify_fd_);
+    notify_fd_ = -1;
   }
-  data = nullptr;
-  mem_length = 0;
-  mem_fd = -1;
-  elems = nullptr;
-  indices = nullptr;
-  bk = nullptr;
+  data_ = nullptr;
+  mem_length_ = 0;
+  mem_fd_ = -1;
+  elems_ = nullptr;
+  indices_ = nullptr;
+  bk_ = nullptr;
 }
 
-u64 publisher_impl_shm::get_num_published() const { return indices->get_num_packets(); }
+u64 publisher_impl_shm::get_num_published() const { return indices_->get_num_packets(); }
 
 publisher_impl_shm::~publisher_impl_shm() { close(); }
 
 NodeError subscribe_impl_shm::open(const channel_info& cn_info, u32 num, bool quiet, float timeout_sec) {
   // Now we have the topic info on info
-  data = (u8*)helper_open_channel(cn_info, mem_fd);
-  if (!data) {
+  data_ = (u8*)helper_open_channel(cn_info, mem_fd_);
+  if (!data_) {
     return SHARED_MEMORY_OPEN_ERROR;
   }
 
-  mem_length = cn_info.channel_size;
-  num_elems = num;
+  mem_length_ = cn_info.channel_size;
+  num_elems_ = num;
 
   // do setup of stuff in data now!
-  indices = (circular_buffer*)data;
-  bk = (message_bookkeep*)(data + sizeof(circular_buffer));
-  elems = (((u8*)bk) + indices->get_buf_size() * sizeof(message_bookkeep));
-  elems += 15;
-  elems = (u8*)(((uintptr_t)elems) & ~0x0F);
+  indices_ = (circular_buffer*)data_;
+  bk_ = (message_bookkeep*)(data_ + sizeof(circular_buffer));
+  elems_ = (((u8*)bk_) + indices_->get_buf_size() * sizeof(message_bookkeep));
+  elems_ += 15;
+  elems_ = (u8*)(((uintptr_t)elems_) & ~0x0F);
 
-  if (aligned_elem_size == 0) {
-    aligned_elem_size = indices->get_aligned_elem_size();
-  } else if (aligned_elem_size != indices->get_aligned_elem_size()) {
+  if (aligned_elem_size_ == 0) {
+    aligned_elem_size_ = indices_->get_aligned_elem_size();
+  } else if (aligned_elem_size_ != indices_->get_aligned_elem_size()) {
     vlog_error(
         VCAT_NODE,
         "Producer and subscriber disagree on message size for topic %s (subscriber %d vs publisher %d)",
-        topic_name_.c_str(), aligned_elem_size, indices->get_aligned_elem_size());
-    u32* pu = (u32*)data;
+        topic_name_.c_str(), aligned_elem_size_, indices_->get_aligned_elem_size());
+    u32* pu = (u32*)data_;
     vlog_error(VCAT_NODE, "Dumping circular buffer: %X %X %X %X %X", pu[0], pu[1], pu[2], pu[3], pu[4]);
     return NodeError::PRODUCER_CBUF_SIZE_MISMATCH;
   }
 
-  last_index = indices->get_starting_last_index(bk);
+  last_index_ = indices_->get_starting_last_index(bk_);
 
   return node::SUCCESS;
 }
@@ -877,8 +877,8 @@ NodeError subscribe_impl_shm::open_notify(const channel_info& cn_info, u32 num_e
   NodeError res;
   res = open(cn_info, num_elems);
   if (res != SUCCESS) return res;
-  wd = nm.add_shm_notification(cn_info.channel_notify, cb, topic_name_);
-  if (wd == -1) {
+  wd_ = nm.add_shm_notification(cn_info.channel_notify, cb, topic_name_);
+  if (wd_ == -1) {
     if (!quiet) {
       vlog_error(VCAT_NODE, "Issue adding Notification callback for topic %s", topic_name_.c_str());
     }
@@ -890,25 +890,25 @@ NodeError subscribe_impl_shm::open_notify(const channel_info& cn_info, u32 num_e
 
 void subscribe_impl_shm::close() {
   if (notification_manager_) {
-    notification_manager_->remove_shm_notification(wd);
+    notification_manager_->remove_shm_notification(wd_);
     notification_manager_ = nullptr;
   }
-  helper_clean(data, mem_fd, mem_length);
-  data = nullptr;
-  mem_fd = -1;
-  mem_length = 0;
+  helper_clean(data_, mem_fd_, mem_length_);
+  data_ = nullptr;
+  mem_fd_ = -1;
+  mem_length_ = 0;
 }
 
 u8* subscribe_impl_shm::get_message(NodeError& result, float timeout_sec, size_t* message_size) {
   // This call might block
   unsigned int elem_index;
-  result = indices->get_next_published(bk, last_index, elem_index, timeout_sec);
+  result = indices_->get_next_published(bk_, last_index_, elem_index, timeout_sec);
 
   if (result == SUCCESS) {
     // This assert is a bit suspect, there is a remote corner case where the assert might fail
-    assert(last_index != static_cast<int32_t>(elem_index));
-    last_index = elem_index;
-    u8* msg = &elems[elem_index * aligned_elem_size];
+    assert(last_index_ != static_cast<int32_t>(elem_index));
+    last_index_ = elem_index;
+    u8* msg = &elems_[elem_index * aligned_elem_size_];
     if (message_size) {
       *message_size = reinterpret_cast<cbuf_preamble*>(msg)->size();
     }
@@ -919,12 +919,12 @@ u8* subscribe_impl_shm::get_message(NodeError& result, float timeout_sec, size_t
 }
 
 bool subscribe_impl_shm::is_there_new() {
-  unsigned int idx = indices->get_next_index(bk, last_index);
-  return indices->is_index_available(bk, idx);
+  unsigned int idx = indices_->get_next_index(bk_, last_index_);
+  return indices_->is_index_available(bk_, idx);
 }
 
 void subscribe_impl_shm::release_message(u32 idx) {
-  if (!indices->release(bk, idx)) {
+  if (!indices_->release(bk_, idx)) {
     vlog_error(VCAT_NODE,
                "Node %s , subscribed to topic %s held the message too long, this can cause heavy problems. "
                "Resetting indices",
@@ -933,13 +933,13 @@ void subscribe_impl_shm::release_message(u32 idx) {
   }
 }
 
-u64 subscribe_impl_shm::get_num_published() const { return indices->get_num_packets(); }
-size_t subscribe_impl_shm::get_num_available() const { return indices->get_num_indices(bk, last_index); }
+u64 subscribe_impl_shm::get_num_published() const { return indices_->get_num_packets(); }
+size_t subscribe_impl_shm::get_num_available() const { return indices_->get_num_indices(bk_, last_index_); }
 void subscribe_impl_shm::debug_string(std::string& dbg) {
   char buf[100];
-  indices->sprint_state(bk, buf, 100);
+  indices_->sprint_state(bk_, buf, 100);
   dbg = buf;
-  dbg += " last_index " + std::to_string(last_index);
+  dbg += " last_index " + std::to_string(last_index_);
 }
 
 static bool try_to_connect(const char host_ips[20][20], const std::string& channel_ip,
@@ -1028,12 +1028,12 @@ NodeError subscribe_impl_network::open_internal(const channel_info& cn_info, u32
   //    return SUBSCRIBER_SOCKET_FCNTL_ERROR;
   //  }
 
-  num_elems = num;
-  num_published = 0;
+  num_elems_ = num;
+  num_published_ = 0;
 
   // fill in available_buffers
-  for (u32 i = 0; i < num_elems; i++) {
-    available_buffers.emplace(1024);
+  for (u32 i = 0; i < num_elems_; i++) {
+    available_buffers_.emplace(1024);
   }
 
   vlog_debug(VCAT_NODE, "Opening network subscriber %s socket %d", topic_name_.c_str(), sockfd_);
@@ -1045,9 +1045,9 @@ NodeError subscribe_impl_network::open(const channel_info& cn_info, u32 num, boo
   if (res != SUCCESS) return res;
 
   // Create the listening thread here
-  quit_thread = false;
-  VLOG_ASSERT(!th.joinable());
-  th = std::thread([this]() { thread_function(); });
+  quit_thread_ = false;
+  VLOG_ASSERT(!th_.joinable());
+  th_ = std::thread([this]() { thread_function(); });
 
   return node::SUCCESS;
 }
@@ -1081,14 +1081,14 @@ NodeError subscribe_impl_network::open_notify(const channel_info& cn_info, u32 n
   }
 
   // This ensures we do not have repeated messages on notifications
-  allow_empty_queue = true;
+  allow_empty_queue_ = true;
 
   // Create the listening thread here
-  quit_thread = false;
-  VLOG_ASSERT(!th.joinable());
-  th = std::thread([this]() { thread_function(); });
+  quit_thread_ = false;
+  VLOG_ASSERT(!th_.joinable());
+  th_ = std::thread([this]() { thread_function(); });
   snprintf(thread_name_, sizeof(thread_name_), "ns_%s", topic_name_.c_str());
-  pthread_setname_np(th.native_handle(), thread_name_);
+  pthread_setname_np(th_.native_handle(), thread_name_);
 
   notification_manager_ = &nm;
   return node::SUCCESS;
@@ -1100,11 +1100,11 @@ void subscribe_impl_network::close() {
     notification_manager_ = nullptr;
   }
 
-  quit_thread = true;
+  quit_thread_ = true;
 
-  if (th.joinable()) {
-    VLOG_ASSERT(th.get_id() != std::this_thread::get_id());
-    th.join();
+  if (th_.joinable()) {
+    VLOG_ASSERT(th_.get_id() != std::this_thread::get_id());
+    th_.join();
   }
   if (sockfd_ >= 0) {
     ::close(sockfd_);
@@ -1123,46 +1123,46 @@ void subscribe_impl_network::close() {
 subscribe_impl_network::~subscribe_impl_network() { close(); }
 
 bool subscribe_impl_network::is_there_new() {
-  std::lock_guard lock(mtx);
-  return !received_messages.empty();
+  std::lock_guard lock(mtx_);
+  return !received_messages_.empty();
 }
 
 // Leave only one message
 void subscribe_impl_network::reset_message_index() {
-  std::lock_guard lock(mtx);
-  VLOG_ASSERT(checkedout_buffer.empty(),
+  std::lock_guard lock(mtx_);
+  VLOG_ASSERT(checkedout_buffer_.empty(),
               "Do not reset indices if there is a checked out message for topic %s on node %s",
               topic_name_.data(), node_name_.data());
-  while (received_messages.size() > 1) {
-    auto buf = std::move(received_messages.front());
-    received_messages.pop();
-    available_buffers.push(std::move(buf));
+  while (received_messages_.size() > 1) {
+    auto buf = std::move(received_messages_.front());
+    received_messages_.pop();
+    available_buffers_.push(std::move(buf));
   }
 }
 
 void subscribe_impl_network::release_message(u32 idx) {
   (void)idx;
-  std::lock_guard lock(mtx);
-  VLOG_ASSERT(!checkedout_buffer.empty(), "Cannot release if there is nothing checked out");
-  if (!allow_empty_queue && received_messages.empty()) {
+  std::lock_guard lock(mtx_);
+  VLOG_ASSERT(!checkedout_buffer_.empty(), "Cannot release if there is nothing checked out");
+  if (!allow_empty_queue_ && received_messages_.empty()) {
     // we should put the buffer at the top of received messages
-    received_messages.push(std::move(checkedout_buffer));
+    received_messages_.push(std::move(checkedout_buffer_));
   } else {
     // return the message to the available buffers
-    available_buffers.push(std::move(checkedout_buffer));
+    available_buffers_.push(std::move(checkedout_buffer_));
   }
 }
 
 size_t subscribe_impl_network::get_num_available() const {
-  std::lock_guard lock(mtx);
-  return received_messages.size();
+  std::lock_guard lock(mtx_);
+  return received_messages_.size();
 }
 
 u8* subscribe_impl_network::get_message(NodeError& result, float timeout_sec, size_t* msg_size) {
-  VLOG_ASSERT(checkedout_buffer.empty(), "Topic %s trying to do 2 consecutive get_message",
+  VLOG_ASSERT(checkedout_buffer_.empty(), "Topic %s trying to do 2 consecutive get_message",
               topic_name_.data());
   // check if we have a new message:
-  std::unique_lock lock(mtx);
+  std::unique_lock lock(mtx_);
 
   if (notification_manager_) {
     // On the notification manager case, we should only be called after a notification, consume
@@ -1172,17 +1172,17 @@ u8* subscribe_impl_network::get_message(NodeError& result, float timeout_sec, si
       ;
   }
 
-  if (!received_messages.empty()) {
-    auto buf = std::move(received_messages.front());
-    received_messages.pop();
-    checkedout_buffer = std::move(buf);
+  if (!received_messages_.empty()) {
+    auto buf = std::move(received_messages_.front());
+    received_messages_.pop();
+    checkedout_buffer_ = std::move(buf);
     result = SUCCESS;
-    if (msg_size) *msg_size = checkedout_buffer.size();
-    return checkedout_buffer.data();
+    if (msg_size) *msg_size = checkedout_buffer_.size();
+    return checkedout_buffer_.data();
   }
 
   // if not, check for possible thread issues, errors
-  if (quit_thread) {
+  if (quit_thread_) {
     vlog_error(VCAT_NODE, "Trying to get a message when the publisher is disconnected");
     result = PRODUCER_NOT_PRESENT;
     return nullptr;
@@ -1191,34 +1191,34 @@ u8* subscribe_impl_network::get_message(NodeError& result, float timeout_sec, si
   if (!notification_manager_) {
     using namespace std::chrono_literals;
     // wait until the thread has received a new message, use condition variable
-    cond_v.wait_for(lock, timeout_sec * 1000ms, [&] { return !received_messages.empty(); });
+    cond_v_.wait_for(lock, timeout_sec * 1000ms, [&] { return !received_messages_.empty(); });
   }
 
   // If received_messages is empty, we had nothing to read
-  if (received_messages.empty()) {
+  if (received_messages_.empty()) {
     result = NO_MESSAGE_AVAILABLE;
     return nullptr;
   }
 
   // success!
-  checkedout_buffer = std::move(received_messages.front());
-  received_messages.pop();
+  checkedout_buffer_ = std::move(received_messages_.front());
+  received_messages_.pop();
   result = SUCCESS;
-  if (msg_size) *msg_size = checkedout_buffer.size();
-  return checkedout_buffer.data();
+  if (msg_size) *msg_size = checkedout_buffer_.size();
+  return checkedout_buffer_.data();
 }
 
 // This function will process all messages and not accept new ones while this is happening
 NodeError subscribe_impl_network::get_all_messages(std::function<void(u8*, size_t)> fn) {
-  VLOG_ASSERT(checkedout_buffer.empty(), "Topic %s trying to do 2 consecutive get_message",
+  VLOG_ASSERT(checkedout_buffer_.empty(), "Topic %s trying to do 2 consecutive get_message",
               topic_name_.data());
   // check if we have a new message:
-  std::lock_guard lock(mtx);
-  while (!received_messages.empty()) {
-    auto buf = std::move(received_messages.front());
-    received_messages.pop();
+  std::lock_guard lock(mtx_);
+  while (!received_messages_.empty()) {
+    auto buf = std::move(received_messages_.front());
+    received_messages_.pop();
     fn(buf.data(), buf.size());
-    available_buffers.push(std::move(buf));
+    available_buffers_.push(std::move(buf));
   }
   return SUCCESS;
 }
@@ -1226,7 +1226,7 @@ NodeError subscribe_impl_network::get_all_messages(std::function<void(u8*, size_
 bool subscribe_impl_network::read_preamble_from_socket(cbuf_preamble& pre) {
   ssize_t bytes = 0;
   bytes = recv(sockfd_, &pre, sizeof(pre), MSG_PEEK | MSG_WAITALL);
-  if (quit_thread) return false;
+  if (quit_thread_) return false;
 
   if ((bytes == -1) && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) {
     return false;
@@ -1274,7 +1274,7 @@ bool subscribe_impl_network::read_cbuf_from_socket(u8* data, size_t sz_to_read) 
     uint8_t* ptr = data + bytes_received;
     size_t to_receive = sz_to_read - bytes_received;
     bytes = recv(sockfd_, ptr, to_receive, MSG_WAITALL);
-    if (quit_thread) return false;
+    if (quit_thread_) return false;
 
     if (bytes < 0) {
       if (errno == EAGAIN || errno == EINTR) {
@@ -1325,12 +1325,12 @@ bool subscribe_impl_network::read_message_from_socket() {
   // Get an available buffer
   std::vector<u8> buffer;
   {
-    std::lock_guard lk(mtx);
-    if (available_buffers.empty()) {
-      if (!received_messages.empty()) {
+    std::lock_guard lk(mtx_);
+    if (available_buffers_.empty()) {
+      if (!received_messages_.empty()) {
         // Take the oldest received if nothing is checked out
-        buffer = std::move(received_messages.front());
-        received_messages.pop();
+        buffer = std::move(received_messages_.front());
+        received_messages_.pop();
       } else {
         // this should never happen
         vlog_fatal(VCAT_NODE,
@@ -1339,8 +1339,8 @@ bool subscribe_impl_network::read_message_from_socket() {
                    node_name_.data(), topic_name_.data(), pre.size());
       }
     } else {
-      buffer = std::move(available_buffers.front());
-      available_buffers.pop();
+      buffer = std::move(available_buffers_.front());
+      available_buffers_.pop();
     }
   }
 
@@ -1356,16 +1356,16 @@ bool subscribe_impl_network::read_message_from_socket() {
   }
   // We got a valid message, put it out
   {
-    std::lock_guard lk(mtx);
-    received_messages.push(std::move(buffer));
-    num_published++;
+    std::lock_guard lk(mtx_);
+    received_messages_.push(std::move(buffer));
+    num_published_++;
   }
 
   return true;
 }
 
 void subscribe_impl_network::thread_function() {
-  while (!quit_thread) {
+  while (!quit_thread_) {
     if (!read_message_from_socket()) continue;
     if (notification_manager_) {
       char c = 1;
@@ -1373,7 +1373,7 @@ void subscribe_impl_network::thread_function() {
       assert(written_n == 1);
       (void)written_n;
     } else {
-      cond_v.notify_all();
+      cond_v_.notify_all();
     }
   }
 }
@@ -1381,13 +1381,13 @@ void subscribe_impl_network::thread_function() {
 void publisher_impl_network::thread_function() {
   struct sockaddr_in address;
   socklen_t addrlen = sizeof(address);
-  snprintf(thread_name, sizeof(thread_name), "npub_%s", topic_name_.c_str());
-  pthread_setname_np(pthread_self(), thread_name);
+  snprintf(thread_name_, sizeof(thread_name_), "npub_%s", topic_name_.c_str());
+  pthread_setname_np(pthread_self(), thread_name_);
 
   int poll_status;
-  while (accept_new_clients) {
+  while (accept_new_clients_) {
     pollfd pfd;
-    pfd.fd = listen_socket;
+    pfd.fd = listen_socket_;
     pfd.events = POLLIN;
     int timeout = 1000;  // 1 second timeout
 
@@ -1399,14 +1399,14 @@ void publisher_impl_network::thread_function() {
     } else {
       if (pfd.revents == POLLNVAL) {
         vlog_error(VCAT_NODE, "Poll on publisher returned but the event was POLLNVAL, socket: %d",
-                   listen_socket);
+                   listen_socket_);
         continue;
       }
       if (pfd.revents != POLLIN) {
         vlog_error(VCAT_NODE, "Poll on publisher returned but the event was not pollin: %d", pfd.revents);
         continue;
       }
-      int new_socket = accept4(listen_socket, (struct sockaddr*)&address, &addrlen, SOCK_CLOEXEC);
+      int new_socket = accept4(listen_socket_, (struct sockaddr*)&address, &addrlen, SOCK_CLOEXEC);
       if (new_socket < 0) {
         vlog_error(VCAT_NODE, "Publisher for topic %s had error doing accept: %d - %s", topic_name_.c_str(),
                    errno, strerror(errno));
@@ -1418,18 +1418,18 @@ void publisher_impl_network::thread_function() {
                      topic_name_.c_str(), errno, strerror(errno));
         }
 
-        struct timeval timeout;
-        timeout.tv_sec = timeout_ms_ / 1000L;
-        timeout.tv_usec = (timeout_ms_ % 1000L) * 1000L;
+        struct timeval s_timeout;
+        s_timeout.tv_sec = timeout_ms_ / 1000L;
+        s_timeout.tv_usec = (timeout_ms_ % 1000L) * 1000L;
 
-        ret = setsockopt(new_socket, SOL_SOCKET, SO_SNDTIMEO, (char*)&timeout, sizeof(timeout));
+        ret = setsockopt(new_socket, SOL_SOCKET, SO_SNDTIMEO, (char*)&s_timeout, sizeof(s_timeout));
         if (ret < 0) {
           vlog_error(VCAT_NODE, "Publisher for topic %s had error setting socket send timeout: %d - %s",
                      topic_name_.c_str(), errno, strerror(errno));
         }
 
-        std::lock_guard lk(mtx);
-        socket_clients.insert(new_socket);
+        std::lock_guard lk(mtx_);
+        socket_clients_.insert(new_socket);
       }
     }
   }
@@ -1441,7 +1441,7 @@ NodeError publisher_impl_network::open(const topic_info* info) {
   (void)info;
 
   // Creating socket file descriptor
-  if ((listen_socket = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0)) < 0) {
+  if ((listen_socket_ = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0)) < 0) {
     vlog_error(VCAT_NODE, "Socket creation for publisher network failed with errno %d: %s", errno,
                strerror(errno));
     return PUBLISHER_SOCKET_COULD_NOT_BE_CREATED;
@@ -1460,28 +1460,28 @@ NodeError publisher_impl_network::open(const topic_info* info) {
   address.sin_port = 0;
 
   // Forcefully attaching socket to the port 8080
-  if (bind(listen_socket, (struct sockaddr*)&address, sizeof(address)) < 0) {
+  if (bind(listen_socket_, (struct sockaddr*)&address, sizeof(address)) < 0) {
     perror("bind failed");
     return PUBLISHER_SOCKET_BIND_ERROR;
   }
 
-  if (getsockname(listen_socket, (struct sockaddr*)&address, &addrlen) < 0) {
+  if (getsockname(listen_socket_, (struct sockaddr*)&address, &addrlen) < 0) {
     perror("getsockname failed");
   }
 
-  port = ntohs(address.sin_port);
-  host_ip = get_host_ips();
+  port_ = ntohs(address.sin_port);
+  host_ip_ = get_host_ips();
 
-  if (listen(listen_socket, 5) < 0) {
+  if (listen(listen_socket_, 5) < 0) {
     perror("listen");
     return PUBLISHER_SOCKET_LISTEN_ERROR;
   }
 
-  accept_new_clients = true;
+  accept_new_clients_ = true;
   topic_name_ = info->topic_name;
   timeout_ms_ = info->cn_info.timeout_ms;
-  vlog_debug(VCAT_NODE, "Open publisher network %s at socket %d", topic_name_.c_str(), listen_socket);
-  listener = std::thread([this]() { this->thread_function(); });
+  vlog_debug(VCAT_NODE, "Open publisher network %s at socket %d", topic_name_.c_str(), listen_socket_);
+  listener_ = std::thread([this]() { this->thread_function(); });
 
   return SUCCESS;
 }
@@ -1523,8 +1523,8 @@ bool publisher_impl_network::transmit_message(const u8* bytes, size_t size) {
   // as little as possible
   std::set<int> sockets;
   {
-    std::lock_guard lk(mtx);
-    sockets = socket_clients;
+    std::lock_guard lk(mtx_);
+    sockets = socket_clients_;
   }
   node::oob_msg oob;
   if (use_checksum_) {
@@ -1542,8 +1542,8 @@ bool publisher_impl_network::transmit_message(const u8* bytes, size_t size) {
     if (!error) error = send_bytes_internal(bytes, size, sk);
 
     if (error) {
-      std::lock_guard lk(mtx);
-      socket_clients.erase(sk);
+      std::lock_guard lk(mtx_);
+      socket_clients_.erase(sk);
       ::close(sk);
     }
 
@@ -1551,7 +1551,7 @@ bool publisher_impl_network::transmit_message(const u8* bytes, size_t size) {
               sk, error ? "ERROR" : "SUCCESS");
     it++;
   }
-  num_published++;
+  num_published_++;
   return true;
 }
 
@@ -1562,25 +1562,25 @@ void publisher_impl_network::fill_channel_info(topic_info& info) {
 }
 
 void publisher_impl_network::close() {
-  accept_new_clients = false;
-  if (listener.joinable()) {
-    listener.join();
+  accept_new_clients_ = false;
+  if (listener_.joinable()) {
+    listener_.join();
   }
 
-  if (listen_socket >= 0) {
-    ::close(listen_socket);
-    listen_socket = -1;
+  if (listen_socket_ >= 0) {
+    ::close(listen_socket_);
+    listen_socket_ = -1;
   }
-  for (auto cl : socket_clients) {
+  for (auto cl : socket_clients_) {
     if (cl >= 0) {
       ::close(cl);
     }
   }
-  socket_clients.clear();
+  socket_clients_.clear();
 }
 
 void observer::release_message(MsgBufPtr& msg) {
-  impl->release_message(msg.getIdx());
+  impl_->release_message(msg.getIdx());
   msg.make_empty();
 }
 
@@ -1590,7 +1590,7 @@ NodeError response_provider_base::open(topic_info* info) {
   socklen_t addrlen = sizeof(address);
 
   // Creating socket file descriptor
-  if ((listen_socket = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0)) < 0) {
+  if ((listen_socket_ = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0)) < 0) {
     vlog_error(VCAT_NODE, "Socket creation for response provider failed with errno %d: %s", errno,
                strerror(errno));
     return PUBLISHER_SOCKET_COULD_NOT_BE_CREATED;
@@ -1600,32 +1600,32 @@ NodeError response_provider_base::open(topic_info* info) {
   address.sin_addr.s_addr = INADDR_ANY;
   address.sin_port = 0;
 
-  if (bind(listen_socket, (struct sockaddr*)&address, sizeof(address)) < 0) {
+  if (bind(listen_socket_, (struct sockaddr*)&address, sizeof(address)) < 0) {
     perror("bind failed");
     return PUBLISHER_SOCKET_BIND_ERROR;
   }
 
-  if (getsockname(listen_socket, (struct sockaddr*)&address, &addrlen) < 0) {
+  if (getsockname(listen_socket_, (struct sockaddr*)&address, &addrlen) < 0) {
     perror("getsockname failed");
   }
 
-  port = ntohs(address.sin_port);
-  host_ip = get_host_ips();
+  port_ = ntohs(address.sin_port);
+  host_ip_ = get_host_ips();
 
-  if (listen(listen_socket, 5) < 0) {
+  if (listen(listen_socket_, 5) < 0) {
     perror("listen");
     return PUBLISHER_SOCKET_LISTEN_ERROR;
   }
 
-  info->cn_info.channel_ip = host_ip;
+  info->cn_info.channel_ip = host_ip_;
   info->cn_info.is_network = true;
-  info->cn_info.channel_port = port;
+  info->cn_info.channel_port = port_;
 
-  accept_new_clients = true;
-  topic_name = info->topic_name;
-  listener = std::thread([this]() { this->thread_function(); });
+  accept_new_clients_ = true;
+  topic_name_ = info->topic_name;
+  listener_ = std::thread([this]() { this->thread_function(); });
 
-  vlog_info(VCAT_NODE, "Opened Response provider on %s:%d", host_ip.c_str(), port);
+  vlog_info(VCAT_NODE, "Opened Response provider on %s:%d", host_ip_.c_str(), port_);
   return SUCCESS;
 }
 
@@ -1634,7 +1634,7 @@ NodeError response_provider_base::open_notify(topic_info* info, NotificationMana
   socklen_t addrlen = sizeof(address);
 
   // Creating socket file descriptor
-  if ((listen_socket = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0)) < 0) {
+  if ((listen_socket_ = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0)) < 0) {
     vlog_error(VCAT_NODE, "Socket creation for response provider notify failed with errno %d: %s", errno,
                strerror(errno));
     return PUBLISHER_SOCKET_COULD_NOT_BE_CREATED;
@@ -1644,54 +1644,54 @@ NodeError response_provider_base::open_notify(topic_info* info, NotificationMana
   address.sin_addr.s_addr = INADDR_ANY;
   address.sin_port = 0;
 
-  if (bind(listen_socket, (struct sockaddr*)&address, sizeof(address)) < 0) {
+  if (bind(listen_socket_, (struct sockaddr*)&address, sizeof(address)) < 0) {
     perror("bind failed");
     return PUBLISHER_SOCKET_BIND_ERROR;
   }
 
-  if (getsockname(listen_socket, (struct sockaddr*)&address, &addrlen) < 0) {
+  if (getsockname(listen_socket_, (struct sockaddr*)&address, &addrlen) < 0) {
     perror("getsockname failed");
   }
 
-  port = ntohs(address.sin_port);
-  host_ip = get_host_ips();
+  port_ = ntohs(address.sin_port);
+  host_ip_ = get_host_ips();
 
-  if (listen(listen_socket, 5) < 0) {
+  if (listen(listen_socket_, 5) < 0) {
     perror("listen");
     return PUBLISHER_SOCKET_LISTEN_ERROR;
   }
 
-  info->cn_info.channel_ip = host_ip;
+  info->cn_info.channel_ip = host_ip_;
   info->cn_info.is_network = true;
-  info->cn_info.channel_port = port;
+  info->cn_info.channel_port = port_;
 
-  accept_new_clients = true;
-  topic_name = info->topic_name;
+  accept_new_clients_ = true;
+  topic_name_ = info->topic_name;
   nm_ = &nm;
   nm_->add_socket_notification(
-      listen_socket, [this](int fd) { this->handle_new_connection(fd); }, topic_name);
+      listen_socket_, [this](int fd) { this->handle_new_connection(fd); }, topic_name_);
 
-  vlog_info(VCAT_NODE, "Opened Response provider on %s:%d", host_ip.c_str(), port);
+  vlog_info(VCAT_NODE, "Opened Response provider on %s:%d", host_ip_.c_str(), port_);
   return SUCCESS;
 }
 
 void response_provider_base::close() {
-  accept_new_clients = false;
-  if (listener.joinable()) listener.join();
-  if (listen_socket != -1) {
+  accept_new_clients_ = false;
+  if (listener_.joinable()) listener_.join();
+  if (listen_socket_ != -1) {
     if (nm_ != nullptr) {
-      nm_->remove_socket_notification(listen_socket);
+      nm_->remove_socket_notification(listen_socket_);
     }
-    ::close(listen_socket);
-    listen_socket = -1;
+    ::close(listen_socket_);
+    listen_socket_ = -1;
   }
-  for (auto client_fd : socket_clients) {
+  for (auto client_fd : socket_clients_) {
     if (nm_ != nullptr) {
       nm_->remove_socket_notification(client_fd);
     }
     ::close(client_fd);
   }
-  socket_clients.clear();
+  socket_clients_.clear();
 }
 
 bool response_provider_base::handle_incoming_message(int client_fd) {
@@ -1706,35 +1706,35 @@ bool response_provider_base::handle_incoming_message(int client_fd) {
     }
     if (bytes < 0) {
       vlog_warning(VCAT_NODE, "Node Response provider for %s: Socket %d receiving cbuf preamble errno: %s",
-                   topic_name.data(), client_fd, strerror(errno));
+                   topic_name_.data(), client_fd, strerror(errno));
       // Mark this as an error
       ::close(client_fd);
-      socket_clients.erase(client_fd);
+      socket_clients_.erase(client_fd);
       return false;
     }
 
     if (bytes != sizeof(pre)) {
       if (bytes == 0) {
         vlog_debug(VCAT_NODE, "Node Requester for %s has disconnected. Likely client termination",
-                   topic_name.data());
+                   topic_name_.data());
 
       } else {
         vlog_warning(VCAT_NODE,
                      "Node Requester for %s has disconnected. [received %zd bytes, "
                      "expected %zu bytes]",
-                     topic_name.data(), bytes, sizeof(pre));
+                     topic_name_.data(), bytes, sizeof(pre));
       }
       ::close(client_fd);
-      socket_clients.erase(client_fd);
+      socket_clients_.erase(client_fd);
       return false;
     }
 
     // ensure our buffer has enough space
-    receiving_buffer.resize(pre.size());
+    receiving_buffer_.resize(pre.size());
 
     size_t bytes_received = 0;
     while (bytes_received < pre.size()) {
-      uint8_t* ptr = receiving_buffer.data() + bytes_received;
+      uint8_t* ptr = receiving_buffer_.data() + bytes_received;
       size_t to_receive = pre.size() - bytes_received;
       bytes = recv(client_fd, ptr, to_receive, MSG_WAITALL);
 
@@ -1747,9 +1747,9 @@ bool response_provider_base::handle_incoming_message(int client_fd) {
         vlog_error(VCAT_NODE,
                    "Error, errno: [%s] reading cbuf from socket!! Will disconnect. Asked for %zu bytes and "
                    "got %zd\n",
-                   strerror(errno), receiving_buffer.size(), bytes);
+                   strerror(errno), receiving_buffer_.size(), bytes);
         ::close(client_fd);
-        socket_clients.erase(client_fd);
+        socket_clients_.erase(client_fd);
         return false;
       }
       bytes_received += bytes;
@@ -1768,16 +1768,16 @@ bool response_provider_base::handle_incoming_message(int client_fd) {
   if (internal_request) {
     // Handle internal request
     rpc_internal_request intreq;
-    if (!intreq.decode_net((char*)receiving_buffer.data(), (int)receiving_buffer.size())) {
+    if (!intreq.decode_net((char*)receiving_buffer_.data(), (int)receiving_buffer_.size())) {
       internal_reply.return_code = NodeError::IDL_DECODE_ERROR;
     } else {
       internal_reply.return_code = NodeError::SUCCESS;
       if (intreq.type == RpcInternalRequestType::NUM_REQUESTS_HANDLED) {
-        internal_reply.num_requests_handled = num_requests_handled;
+        internal_reply.num_requests_handled = (u32)num_requests_handled_;
       } else if (intreq.type == RpcInternalRequestType::TERMINATE_RPC) {
-        vlog_debug(VCAT_NODE, "Closing client of %s at the client request", topic_name.data());
+        vlog_debug(VCAT_NODE, "Closing client of %s at the client request", topic_name_.data());
         ::close(client_fd);
-        socket_clients.erase(client_fd);
+        socket_clients_.erase(client_fd);
         return false;
       } else {
         internal_reply.return_code = NodeError::GENERIC_ERROR;
@@ -1796,8 +1796,8 @@ bool response_provider_base::handle_incoming_message(int client_fd) {
       transmitting_size = internal_reply.encode_size();
       bytes = (u8*)&internal_reply;
     } else {
-      transmitting_size = transmitting_buffer.size();
-      bytes = transmitting_buffer.data();
+      transmitting_size = transmitting_buffer_.size();
+      bytes = transmitting_buffer_.data();
     }
   }
 
@@ -1809,9 +1809,9 @@ bool response_provider_base::handle_incoming_message(int client_fd) {
       vlog_warning(VCAT_NODE,
                    "Error errno [%s] (%d) on writing to socket: %d, topic: %s, will disconnect client "
                    "(handle incoming msg)",
-                   strerror(errno), errno, client_fd, topic_name.c_str());
+                   strerror(errno), errno, client_fd, topic_name_.c_str());
       ::close(client_fd);
-      socket_clients.erase(client_fd);
+      socket_clients_.erase(client_fd);
       return false;
     } else {
       sent_bytes += wbytes;
@@ -1819,15 +1819,15 @@ bool response_provider_base::handle_incoming_message(int client_fd) {
   }
 
   // do not count internal request in the number handled
-  if (!internal_request) num_requests_handled++;
+  if (!internal_request) num_requests_handled_++;
   return true;
 }
 
 void response_provider_base::handle_new_connection(int fd) {
-  VLOG_ASSERT(fd == listen_socket);
+  VLOG_ASSERT(fd == listen_socket_);
   struct sockaddr_in address;
   socklen_t addrlen = sizeof(address);
-  int new_socket = accept4(listen_socket, (struct sockaddr*)&address, &addrlen, SOCK_CLOEXEC);
+  int new_socket = accept4(listen_socket_, (struct sockaddr*)&address, &addrlen, SOCK_CLOEXEC);
   if (new_socket < 0) {
     perror("accept on new client");
     return;
@@ -1838,38 +1838,38 @@ void response_provider_base::handle_new_connection(int fd) {
   if (ret < 0) {
     perror("Setting TCP_NODELAY");
   }
-  socket_clients.insert(new_socket);
+  socket_clients_.insert(new_socket);
   if (nm_ != nullptr) {
     nm_->add_socket_notification(
         new_socket,
-        [this](int fd) {
-          if (!this->handle_incoming_message(fd)) {
-            nm_->remove_socket_notification(fd);
-            socket_clients.erase(fd);
-            ::close(fd);
+        [this](int lambda_fd) {
+          if (!this->handle_incoming_message(lambda_fd)) {
+            nm_->remove_socket_notification(lambda_fd);
+            socket_clients_.erase(lambda_fd);
+            ::close(lambda_fd);
           }
         },
-        topic_name);
+        topic_name_);
   }
 }
 
 void response_provider_base::thread_function() {
   struct sockaddr_in address;
   socklen_t addrlen = sizeof(address);
-  snprintf(thread_name, sizeof(thread_name), "rpcprov_%s", topic_name.c_str());
-  pthread_setname_np(pthread_self(), thread_name);
+  snprintf(thread_name_, sizeof(thread_name_), "rpcprov_%s", topic_name_.c_str());
+  pthread_setname_np(pthread_self(), thread_name_);
 
   int poll_status;
   std::vector<pollfd> pfds;
   pfds.reserve(20);
-  while (accept_new_clients) {
+  while (accept_new_clients_) {
     // relatively tame number of concurrent users...
-    pfds.resize(1 + socket_clients.size());
-    pfds[0].fd = listen_socket;
+    pfds.resize(1 + socket_clients_.size());
+    pfds[0].fd = listen_socket_;
     pfds[0].events = POLLIN;
 
     size_t idx = 1;
-    for (auto client_fd : socket_clients) {
+    for (auto client_fd : socket_clients_) {
       pfds[idx].fd = client_fd;
       pfds[idx].events = POLLIN;
       idx++;
@@ -1887,7 +1887,7 @@ void response_provider_base::thread_function() {
         if ((pfds[idx].revents & (POLLERR | POLLHUP | POLLNVAL)) != 0) {
           vlog_debug(VCAT_NODE, "Requester on fd %d disconnected", pfds[idx].fd);
           ::close(pfds[idx].fd);
-          socket_clients.erase(pfds[idx].fd);
+          socket_clients_.erase(pfds[idx].fd);
         } else if ((pfds[idx].revents & POLLIN) == POLLIN) {
           // Handle the message
           handle_incoming_message(pfds[idx].fd);
@@ -1900,7 +1900,7 @@ void response_provider_base::thread_function() {
       }
 
       if ((pfds[0].revents & POLLIN) == POLLIN) {
-        int new_socket = accept4(listen_socket, (struct sockaddr*)&address, &addrlen, SOCK_CLOEXEC);
+        int new_socket = accept4(listen_socket_, (struct sockaddr*)&address, &addrlen, SOCK_CLOEXEC);
         if (new_socket < 0) {
           perror("accept on new client");
         } else {
@@ -1910,12 +1910,12 @@ void response_provider_base::thread_function() {
             perror("Setting TCP_NODELAY");
           }
 
-          socket_clients.insert(new_socket);
+          socket_clients_.insert(new_socket);
         }
       }
     }
   }
-  vlog_info(VCAT_NODE, "Thread for Response Provider on topic %s terminating...", topic_name.c_str());
+  vlog_info(VCAT_NODE, "Thread for Response Provider on topic %s terminating...", topic_name_.c_str());
 }
 
 // This function opens a socket
@@ -1927,7 +1927,7 @@ NodeError requester_base::open(float timeout_sec, float retry_delay_sec, const s
   channel_port_ = port;
   // Reset our counter for disconnection internal messages
   close_request_sent_ = false;
-  expect_reply = true;
+  expect_reply_ = true;
 
   if (host_ips_[0][0] == 0) {
     get_host_ips_vec(host_ips_);
@@ -1974,8 +1974,8 @@ NodeError requester_base::open_notify(float timeout_sec, float retry_delay_sec, 
 }
 
 NodeError requester_base::sendRequestOnly() {
-  size_t transmitting_size = transmitting_buffer.size();
-  u8* bytes = transmitting_buffer.data();
+  size_t transmitting_size = transmitting_buffer_.size();
+  u8* bytes = transmitting_buffer_.data();
   rpc_internal_reply internal_reply;
 
   if (sockfd_ == -1) {
@@ -2049,7 +2049,7 @@ NodeError requester_base::receiveReply(bool async) {
     }
 
     // ensure our buffer has enough space
-    std::vector<u8>& rec_buffer = async ? receiving_buffer_async_ : receiving_buffer;
+    std::vector<u8>& rec_buffer = async ? receiving_buffer_async_ : receiving_buffer_;
     rec_buffer.resize(pre.size());
 
     size_t bytes_received = 0;
@@ -2102,7 +2102,7 @@ NodeError requester_base::sendRequest() {
   if (result != SUCCESS) return result;
 
   // Nothing more to do, this can be a termination internal message
-  if (!expect_reply) return SUCCESS;
+  if (!expect_reply_) return SUCCESS;
 
   // now we wait for the reply
   result = receiveReply();
@@ -2112,13 +2112,13 @@ NodeError requester_base::sendRequest() {
 int requester_base::total_published_messages() {
   rpc_internal_request intreq;
   intreq.type = RpcInternalRequestType::NUM_REQUESTS_HANDLED;
-  transmitting_buffer.resize(intreq.encode_net_size());
-  if (!intreq.encode_net((char*)transmitting_buffer.data(), transmitting_buffer.size())) {
+  transmitting_buffer_.resize(intreq.encode_net_size());
+  if (!intreq.encode_net((char*)transmitting_buffer_.data(), (u32)transmitting_buffer_.size())) {
     vlog_error(VCAT_NODE, "Error on trying to find number of published messages, could not encode request");
     return -1;
   }
 
-  expect_reply = true;
+  expect_reply_ = true;
   NodeError res = sendRequest();
   if (res != SUCCESS) {
     vlog_error(VCAT_NODE, "Error on trying to find number of published messages: %s", NodeErrorToStr(res));
@@ -2127,7 +2127,7 @@ int requester_base::total_published_messages() {
 
   node::rpc_internal_reply internal_reply;
   // Has to work
-  VLOG_ASSERT(internal_reply.decode((char*)receiving_buffer.data(), internal_reply.encode_net_size()),
+  VLOG_ASSERT(internal_reply.decode((char*)receiving_buffer_.data(), (u32)internal_reply.encode_net_size()),
               "Has to work since we get here");
   return internal_reply.num_requests_handled;
 }
@@ -2147,9 +2147,9 @@ void requester_base::close() {
     close_request_sent_ = true;
     rpc_internal_request intreq;
     intreq.type = RpcInternalRequestType::TERMINATE_RPC;
-    transmitting_buffer.resize(intreq.encode_net_size());
-    if (intreq.encode_net((char*)transmitting_buffer.data(), transmitting_buffer.size())) {
-      expect_reply = false;
+    transmitting_buffer_.resize(intreq.encode_net_size());
+    if (intreq.encode_net((char*)transmitting_buffer_.data(), (u32)transmitting_buffer_.size())) {
+      expect_reply_ = false;
       sendRequest();
     }
   }
@@ -2198,23 +2198,23 @@ NodeError observer::open(float timeout_sec, float retry_delay_sec, bool quiet) {
   }
 
   if (info.type == TopicType::RPC) {
-    impl = new rpcsubs_impl();
+    impl_ = new rpcsubs_impl();
   } else if (info.type == TopicType::PUB_SUB) {
     if (info.cn_info.is_network) {
-      impl = new subscribe_impl_network();
+      impl_ = new subscribe_impl_network();
     } else {
       // Set the aligned elem size to 0 to take it from the producer
-      impl = new subscribe_impl_shm(0);
+      impl_ = new subscribe_impl_shm(0);
     }
   } else if (info.type == TopicType::SINK_SRC) {
-    impl = new sourcesubs_impl();
+    impl_ = new sourcesubs_impl();
   } else {
     vlog_error(VCAT_NODE, "Unknown topic type for %s", topic_name_.c_str());
     return GENERIC_ERROR;
   }
-  impl->set_topic_name(topic_name_);
+  impl_->set_topic_name(topic_name_);
 
-  res = impl->open(info.cn_info, info.num_elems);
+  res = impl_->open(info.cn_info, info.num_elems);
   if (res != SUCCESS) {
     if (!quiet) {
       vlog_error(VCAT_NODE, "Observer failure to open the topic %s: %s", topic_name_.c_str(),
@@ -2272,25 +2272,25 @@ NodeError observer::open_notify(NotificationManager& nm, std::function<void(node
   }
 
   if (info.type == TopicType::RPC) {
-    impl = new rpcsubs_impl();
+    impl_ = new rpcsubs_impl();
   } else if (info.type == TopicType::PUB_SUB) {
     if (info.cn_info.is_network) {
-      impl = new subscribe_impl_network();
+      impl_ = new subscribe_impl_network();
     } else {
       // Set the aligned elem size to 0 to take it from the producer
-      impl = new subscribe_impl_shm(0);
+      impl_ = new subscribe_impl_shm(0);
     }
   } else if (info.type == TopicType::SINK_SRC) {
-    impl = new sourcesubs_impl();
+    impl_ = new sourcesubs_impl();
   } else {
     vlog_error(VCAT_NODE, "Unknown topic type for %s", topic_name_.c_str());
     return GENERIC_ERROR;
   }
-  impl->set_topic_name(topic_name_);
+  impl_->set_topic_name(topic_name_);
 
   message_callback_ = cb;
 
-  res = impl->open_notify(
+  res = impl_->open_notify(
       info.cn_info, info.num_elems, nm, [&](int fd) { process_message_notification(fd); }, quiet,
       timeout_connect_sec);
   if (res != SUCCESS) {
@@ -2313,8 +2313,8 @@ bool observer::process_message_notification(int fd) {
   // By doing this call on the callback we ensure that for shared memory
   // subscribers the callback will return the most recent message
   // Network subscribers do this on the get_message part already
-  if (this->impl && this->impl->is_open()) {
-    while (this->impl->get_num_available() > 0) {
+  if (this->impl_ && this->impl_->is_open()) {
+    while (this->impl_->get_num_available() > 0) {
       MsgBufPtr msg = this->get_message(res, 0);
       if (res == node::SUCCESS) {
         message_callback_(msg);
@@ -2334,9 +2334,9 @@ bool observer::process_message_notification(int fd) {
 }
 
 rpcsubs_impl::~rpcsubs_impl() {
-  quit_thread = true;
-  if (th.joinable()) {
-    th.join();
+  quit_thread_ = true;
+  if (th_.joinable()) {
+    th_.join();
   }
 }
 
@@ -2347,9 +2347,9 @@ NodeError rpcsubs_impl::open(const channel_info& cn_info, u32 num, bool quiet, f
   port_ = cn_info.channel_port;
   timeout_sec_ = timeout_sec;
 
-  quit_thread = false;
-  VLOG_ASSERT(!th.joinable());
-  th = std::thread([this]() { thread_function(); });
+  quit_thread_ = false;
+  VLOG_ASSERT(!th_.joinable());
+  th_ = std::thread([this]() { thread_function(); });
 
   return node::SUCCESS;
 }
@@ -2363,12 +2363,12 @@ NodeError rpcsubs_impl::open_notify([[maybe_unused]] const channel_info& cn_info
 }
 
 void rpcsubs_impl::thread_function() {
-  while (!quit_thread) {
+  while (!quit_thread_) {
     if (requester_.is_open() || (requester_.open(timeout_sec_, 0.05f, channel_ip_, port_) == SUCCESS)) {
       auto req_pub = requester_.total_published_messages();
       if (req_pub > 0) {
         // Only do this when we have success, a positive number of messages
-        num_published = req_pub;
+        num_published_ = req_pub;
       }
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -2583,8 +2583,8 @@ NodeError source_base::open(const std::string& channel_ip, uint16_t port) {
 }
 
 NodeError source_base::sendMessageFromBuffer() {
-  size_t transmitting_size = transmitting_buffer.size();
-  u8* bytes = transmitting_buffer.data();
+  size_t transmitting_size = transmitting_buffer_.size();
+  u8* bytes = transmitting_buffer_.data();
   rpc_internal_reply internal_reply;
 
   if (sockfd_ == -1) {
@@ -2619,8 +2619,8 @@ u32 source_base::get_num_messages() {
   rpc_internal_request req;
   req.type = RpcInternalRequestType::NUM_REQUESTS_HANDLED;
   size_t sz = req.encode_net_size();
-  transmitting_buffer.resize(sz);
-  auto bres = req.encode_net((char*)transmitting_buffer.data(), sz);
+  transmitting_buffer_.resize(sz);
+  auto bres = req.encode_net((char*)transmitting_buffer_.data(), (u32)sz);
   if (!bres) {
     vlog_error(VCAT_NODE, "Source Failure to encode internal request!");
     return 0;
@@ -2655,9 +2655,9 @@ void source_base::close() {
 }
 
 sourcesubs_impl::~sourcesubs_impl() {
-  quit_thread = true;
-  if (th.joinable()) {
-    th.join();
+  quit_thread_ = true;
+  if (th_.joinable()) {
+    th_.join();
   }
 }
 
@@ -2667,9 +2667,9 @@ NodeError sourcesubs_impl::open(const channel_info& cn_info, u32 num, bool quiet
   channel_ip_ = cn_info.channel_ip;
   port_ = cn_info.channel_port;
 
-  quit_thread = false;
-  VLOG_ASSERT(!th.joinable());
-  th = std::thread([this]() { thread_function(); });
+  quit_thread_ = false;
+  VLOG_ASSERT(!th_.joinable());
+  th_ = std::thread([this]() { thread_function(); });
 
   return node::SUCCESS;
 }
@@ -2685,12 +2685,12 @@ NodeError sourcesubs_impl::open_notify([[maybe_unused]] const channel_info& cn_i
 }
 
 void sourcesubs_impl::thread_function() {
-  while (!quit_thread) {
+  while (!quit_thread_) {
     if (source_.is_open() || (source_.open(channel_ip_, port_) == SUCCESS)) {
       auto num = source_.get_num_messages();
       if (num > 0) {
         // Only do this when we have success, a positive number of messages
-        num_published = num;
+        num_published_ = num;
       }
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(50));

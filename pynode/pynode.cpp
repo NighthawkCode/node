@@ -333,7 +333,7 @@ static PyObject* pynode_module_get_all_topics_impl(PyObject* module, PyObject* a
     if (topic_sz > bytebuffer.size()) {
       bytebuffer.resize(topic_sz);
     }
-    if (!topic.encode_net((char*)bytebuffer.data(), bytebuffer.size())) {
+    if (!topic.encode_net((char*)bytebuffer.data(), (unsigned int)bytebuffer.size())) {
       std::string err_str =
           "Error encoding topic index " + std::to_string(idx) + " with name " + topic.topic_name;
       PyErr_SetString(PyExc_Exception, err_str.c_str());
@@ -391,7 +391,7 @@ static struct PyMethodDef pynodemodule_methods[] = {
 };
 // clang-format on
 
-struct PyModuleDef PyNode_Module = {
+static struct PyModuleDef PyNode_Module = {
     PyModuleDef_HEAD_INIT,
     .m_name = "pynode",
     .m_doc = NULL,

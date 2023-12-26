@@ -256,32 +256,32 @@ public:
 
 class publisher_base {
 protected:
-  std::string topic_name;
-  std::string message_name;  // For introspection
-  uint64_t message_hash;     // For introspection
-  uint8_t variant = 0;
-  bool network = false;
+  std::string topic_name_;
+  std::string message_name_;  // For introspection
+  uint64_t message_hash_;     // For introspection
+  uint8_t variant_ = 0;
+  bool network_ = false;
 
 public:
   virtual ~publisher_base() {}
 
-  void set_topic_name(const std::string& name) { topic_name = name; }
+  void set_topic_name(const std::string& name) { topic_name_ = name; }
 
-  void set_topic_variant(uint8_t var) { variant = var; }
+  void set_topic_variant(uint8_t var) { variant_ = var; }
 
-  void set_message_name(const std::string& name) { message_name = name; }
+  void set_message_name(const std::string& name) { message_name_ = name; }
 
-  void set_message_hash(const uint64_t hash) { message_hash = hash; }
+  void set_message_hash(const uint64_t hash) { message_hash_ = hash; }
 
-  void set_network(bool n) { network = n; }
+  void set_network(bool n) { network_ = n; }
 
-  const std::string get_message_name() const { return message_name; }
+  const std::string get_message_name() const { return message_name_; }
 
-  const std::string get_topic_name() const { return topic_name; }
+  const std::string get_topic_name() const { return topic_name_; }
 
-  uint64_t get_message_hash() const { return message_hash; }
+  uint64_t get_message_hash() const { return message_hash_; }
 
-  uint8_t get_topic_variant() const { return variant; }
+  uint8_t get_topic_variant() const { return variant_; }
 
   virtual size_t get_num_published() const = 0;
 
@@ -294,7 +294,7 @@ public:
 
   virtual const char* get_message_cbuf_def() const = 0;
 
-  bool get_network() const { return network; }
+  bool get_network() const { return network_; }
 
   virtual bool enable_checksum() = 0;
 
@@ -320,16 +320,16 @@ public:
 };
 
 class publisher_impl_network : public publisher_impl {
-  std::set<int> socket_clients;
-  int listen_socket = -1;
-  uint16_t port = -1;
+  std::set<int> socket_clients_;
+  int listen_socket_ = -1;
+  uint16_t port_ = -1;
   std::string topic_name_;  // for thread naming
-  char thread_name[16];
-  u64 num_published = 0;
-  std::string host_ip;
-  std::thread listener;
-  std::mutex mtx;
-  bool accept_new_clients = true;
+  char thread_name_[16];
+  u64 num_published_ = 0;
+  std::string host_ip_;
+  std::thread listener_;
+  std::mutex mtx_;
+  bool accept_new_clients_ = true;
   bool use_checksum_ = false;
   int timeout_ms_ = 50;  // A default of 50ms timeout for transmitting a message
 
@@ -348,32 +348,32 @@ public:
 
   NodeError open(const topic_info* info) override;
   bool transmit_message(const u8* bytes, size_t size) override;
-  bool is_open() const override { return listen_socket != -1; }
+  bool is_open() const override { return listen_socket_ != -1; }
   void fill_channel_info(topic_info& info) override;
   void close() override;
   bool is_network() const override { return true; }
-  u64 get_num_published() const override { return num_published; }
+  u64 get_num_published() const override { return num_published_; }
   u32 get_num_elements() const override { return 0; }
   bool enable_checksum() override {
     use_checksum_ = true;
     return true;
   }
 
-  uint16_t get_port() const { return port; }
-  const std::string& get_host_ip() const { return host_ip; }
-  void preclose() override { accept_new_clients = false; }
+  uint16_t get_port() const { return port_; }
+  const std::string& get_host_ip() const { return host_ip_; }
+  void preclose() override { accept_new_clients_ = false; }
 };
 
 class publisher_impl_shm : public publisher_impl {
-  circular_buffer* indices = nullptr;  // Indices should be allocated inside of data...
-  message_bookkeep* bk = nullptr;      // Also allocated inside of data
-  u8* data = nullptr;
-  int mem_fd = -1;
-  int notify_fd = -1;
-  u32 mem_length = 0;
-  u8* elems = nullptr;
-  u32 aligned_elem_size = 0;
-  u32 num_elems = 0;
+  circular_buffer* indices_ = nullptr;  // Indices should be allocated inside of data...
+  message_bookkeep* bk_ = nullptr;      // Also allocated inside of data
+  u8* data_ = nullptr;
+  int mem_fd_ = -1;
+  int notify_fd_ = -1;
+  u32 mem_length_ = 0;
+  u8* elems_ = nullptr;
+  u32 aligned_elem_size_ = 0;
+  u32 num_elems_ = 0;
 
   // Do not allow for copy/move operator or constructor
   publisher_impl_shm(publisher_impl_shm const& other) = delete;
@@ -383,14 +383,14 @@ class publisher_impl_shm : public publisher_impl {
 
 public:
   publisher_impl_shm(u32 num_elems, u32 elem_size);
-  bool is_open() const override { return mem_fd != -1; }
+  bool is_open() const override { return mem_fd_ != -1; }
   void fill_channel_info(topic_info& info) override;
   NodeError open(const topic_info* info) override;
   u8* get_memory_for_message() override;
   bool transmit_message(const u8* data, size_t sz) override;
   void close() override;
   u64 get_num_published() const override;
-  u32 get_num_elements() const override { return num_elems; }
+  u32 get_num_elements() const override { return num_elems_; }
   bool enable_checksum() override { return false; }
   void preclose() override {}
 
@@ -400,9 +400,9 @@ public:
 template <class T>
 class publisher : public publisher_base {
 private:
-  T* msg = nullptr;
-  std::vector<u8> buffer;
-  publisher_impl* impl = nullptr;
+  T* msg_ = nullptr;
+  std::vector<u8> buffer_;
+  publisher_impl* impl_ = nullptr;
 
   // Do not allow for copy operator or constructor
   publisher(publisher<T> const& other) = delete;
@@ -410,34 +410,34 @@ private:
 
 public:
   publisher() = default;
-  publisher(const std::string& topic) { topic_name = topic; }
+  publisher(const std::string& topic) { topic_name_ = topic; }
 
   publisher(publisher<T>&& rhs) {
-    this->topic_name = std::move(rhs.topic_name);
-    this->message_name = std::move(rhs.message_name);
-    this->message_hash = rhs.message_hash;
-    this->variant = rhs.variant;
-    std::swap(impl, rhs.impl);
-    std::swap(msg, rhs.msg);
-    std::swap(buffer, rhs.buffer);
+    this->topic_name_ = std::move(rhs.topic_name_);
+    this->message_name_ = std::move(rhs.message_name_);
+    this->message_hash_ = rhs.message_hash_;
+    this->variant_ = rhs.variant_;
+    std::swap(impl_, rhs.impl_);
+    std::swap(msg_, rhs.msg_);
+    std::swap(buffer_, rhs.buffer_);
   }
 
   publisher& operator=(publisher<T>&& rhs) {
-    this->topic_name = std::move(rhs.topic_name);
-    this->message_name = std::move(rhs.message_name);
-    this->message_hash = rhs.message_hash;
-    this->variant = rhs.variant;
-    std::swap(impl, rhs.impl);
-    std::swap(msg, rhs.msg);
-    std::swap(buffer, rhs.buffer);
+    this->topic_name_ = std::move(rhs.topic_name_);
+    this->message_name_ = std::move(rhs.message_name_);
+    this->message_hash_ = rhs.message_hash_;
+    this->variant_ = rhs.variant_;
+    std::swap(impl_, rhs.impl_);
+    std::swap(msg_, rhs.msg_);
+    std::swap(buffer_, rhs.buffer_);
 
     return *this;
   }
 
-  bool is_open() const { return impl && impl->is_open(); }
+  bool is_open() const { return impl_ && impl_->is_open(); }
 
   size_t get_message_size() const override {
-    if (network) return 0;
+    if (network_) return 0;
     return sizeof(T);
   }
 
@@ -462,7 +462,7 @@ public:
       return INVALID_PARAMETERS;
     }
 
-    info.topic_name = this->topic_name;
+    info.topic_name = this->topic_name_;
     info.msg_name = T::TYPE_STRING;
     info.msg_hash = T::TYPE_HASH;
     info.msg_cbuftxt = T::cbuf_string;
@@ -471,94 +471,94 @@ public:
     // fill the timeout for the channel
     info.cn_info.timeout_ms = timeout_ms;
 
-    network = is_network;
+    network_ = is_network;
 
     if (is_network) {
-      msg = new T;
-      impl = new publisher_impl_network();
-      res = impl->open(&info);
+      msg_ = new T;
+      impl_ = new publisher_impl_network();
+      res = impl_->open(&info);
       if (res != SUCCESS) {
         return res;
       }
 
-      impl->fill_channel_info(info);
+      impl_->fill_channel_info(info);
       info.visible = true;
       res = create_topic(info);
       if (res != SUCCESS) {
-        delete impl;
-        impl = nullptr;
+        delete impl_;
+        impl_ = nullptr;
         return res;
       }
       return res;
     }
 
     // Shared memory case
-    impl = new publisher_impl_shm(num_elems, sizeof(T));
+    impl_ = new publisher_impl_shm(num_elems, sizeof(T));
     info.visible = false;
 
-    impl->fill_channel_info(info);
+    impl_->fill_channel_info(info);
 
     res = create_topic(info);
     if (res != SUCCESS) {
       return res;
     }
 
-    res = impl->open(&info);
+    res = impl_->open(&info);
     if (res != SUCCESS) {
       return res;
     }
 
-    res = make_topic_visible(this->topic_name);
+    res = make_topic_visible(this->topic_name_);
     return res;
   }
 
   // Producer: get a pointer to a struct to fill
   T* prepare_message() {
-    if (impl->is_network()) {
-      return msg;
+    if (impl_->is_network()) {
+      return msg_;
     } else {
       // This call might block
-      T* e = new (impl->get_memory_for_message()) T;
+      T* e = new (impl_->get_memory_for_message()) T;
       return e;
     }
   }
 
   // Producer: This function assumes that the image* previously returned will no longer be used
   bool transmit_message(T* elem) {
-    if (!impl->is_network()) {
-      return impl->transmit_message(nullptr, 0);
+    if (!impl_->is_network()) {
+      return impl_->transmit_message(nullptr, 0);
     }
 
     if (T::is_simple() && !T::supports_compact()) {
-      return impl->transmit_message((const u8*)elem->encode(), elem->encode_size());
+      return impl_->transmit_message((const u8*)elem->encode(), elem->encode_size());
     } else {
       auto size = elem->encode_net_size();
-      if (buffer.size() < size) {
-        buffer.resize(size);
+      if (buffer_.size() < size) {
+        buffer_.resize(size);
       }
-      elem->encode_net((char*)buffer.data(), size);
-      return impl->transmit_message(buffer.data(), size);
+      elem->encode_net((char*)buffer_.data(), size);
+      return impl_->transmit_message(buffer_.data(), size);
     }
   }
 
-  u64 get_num_published() const override { return impl->get_num_published(); }
+  u64 get_num_published() const override { return impl_->get_num_published(); }
 
-  u32 get_num_messages() const override { return impl->get_num_elements(); }
+  u32 get_num_messages() const override { return impl_->get_num_elements(); }
 
-  bool enable_checksum() override { return impl->enable_checksum(); }
+  bool enable_checksum() override { return impl_->enable_checksum(); }
 
   void preclose() override {
-    if (impl != nullptr) impl->preclose();
+    if (impl_ != nullptr) impl_->preclose();
   }
 
   ~publisher() override {
-    if (impl) {
-      delete impl;
-      impl = nullptr;
+    if (impl_) {
+      delete impl_;
+      impl_ = nullptr;
     }
-    if (msg) {
-      delete msg;
-      msg = nullptr;
+    if (msg_) {
+      delete msg_;
+      msg_ = nullptr;
     }
   }
 };
@@ -569,8 +569,8 @@ public:
 // instead of a class.
 class publisher_generic : public publisher_base {
 private:
-  std::vector<u8> buffer;
-  publisher_impl* impl = nullptr;
+  std::vector<u8> buffer_;
+  publisher_impl* impl_ = nullptr;
   std::string cbuf_string_;
   u64 msg_size_ = 0;
   u32 num_elements_ = 0;
@@ -582,36 +582,36 @@ private:
 
 public:
   publisher_generic() = default;
-  publisher_generic(const std::string& topic) { topic_name = topic; }
+  publisher_generic(const std::string& topic) { topic_name_ = topic; }
 
   // We want our own Move constructors and assignments because the
   // impl member needs to be swapped, same as the buffer. By default
   // the compiler would generate a move which is not correct.
   publisher_generic(publisher_generic&& rhs) {
-    this->topic_name = std::move(rhs.topic_name);
-    this->message_name = std::move(rhs.message_name);
-    this->message_hash = rhs.message_hash;
-    this->variant = rhs.variant;
+    this->topic_name_ = std::move(rhs.topic_name_);
+    this->message_name_ = std::move(rhs.message_name_);
+    this->message_hash_ = rhs.message_hash_;
+    this->variant_ = rhs.variant_;
     this->msg_size_ = rhs.msg_size_;
     this->allow_hash_mismatch_ = rhs.allow_hash_mismatch_;
-    std::swap(impl, rhs.impl);
-    this->buffer = std::move(rhs.buffer);
+    std::swap(impl_, rhs.impl_);
+    this->buffer_ = std::move(rhs.buffer_);
   }
 
   publisher_generic& operator=(publisher_generic&& rhs) {
-    this->topic_name = std::move(rhs.topic_name);
-    this->message_name = std::move(rhs.message_name);
-    this->message_hash = rhs.message_hash;
-    this->variant = rhs.variant;
+    this->topic_name_ = std::move(rhs.topic_name_);
+    this->message_name_ = std::move(rhs.message_name_);
+    this->message_hash_ = rhs.message_hash_;
+    this->variant_ = rhs.variant_;
     this->msg_size_ = rhs.msg_size_;
     this->allow_hash_mismatch_ = rhs.allow_hash_mismatch_;
-    std::swap(impl, rhs.impl);
-    this->buffer = std::move(rhs.buffer);
+    std::swap(impl_, rhs.impl_);
+    this->buffer_ = std::move(rhs.buffer_);
 
     return *this;
   }
 
-  bool is_open() const { return impl && impl->is_open(); }
+  bool is_open() const { return impl_ && impl_->is_open(); }
 
   size_t get_message_size() const override { return msg_size_; }
 
@@ -641,7 +641,7 @@ public:
 
     num_elements_ = num_elems;
 
-    info.topic_name = this->topic_name;
+    info.topic_name = this->topic_name_;
     info.msg_name = type_string;
     info.msg_hash = hash;
     info.msg_cbuftxt = cbuf_string;
@@ -650,22 +650,22 @@ public:
     info.type = node::TopicType::PUB_SUB;
     info.cn_info.timeout_ms = 30;  // Set a default timeout
 
-    network = is_network;
+    network_ = is_network;
     cbuf_string_ = cbuf_string;
 
     if (is_network) {
-      impl = new publisher_impl_network();
-      res = impl->open(&info);
+      impl_ = new publisher_impl_network();
+      res = impl_->open(&info);
       if (res != SUCCESS) {
         return res;
       }
 
-      impl->fill_channel_info(info);
+      impl_->fill_channel_info(info);
       info.visible = true;
       res = create_topic(info);
       if (res != SUCCESS) {
-        delete impl;
-        impl = nullptr;
+        delete impl_;
+        impl_ = nullptr;
         return res;
       }
       return res;
@@ -676,22 +676,22 @@ public:
       return INVALID_PARAMETERS;
     }
     // Shared memory case
-    impl = new publisher_impl_shm(num_elems, msg_size);
+    impl_ = new publisher_impl_shm(num_elems, (u32)msg_size);
     info.visible = false;
 
-    impl->fill_channel_info(info);
+    impl_->fill_channel_info(info);
 
     res = create_topic(info);
     if (res != SUCCESS) {
       return res;
     }
 
-    res = impl->open(&info);
+    res = impl_->open(&info);
     if (res != SUCCESS) {
       return res;
     }
 
-    res = make_topic_visible(this->topic_name);
+    res = make_topic_visible(this->topic_name_);
     return res;
   }
 
@@ -700,24 +700,24 @@ public:
   // this function will transmit the message without checking the bytes sent
   // actually form a meaningful message. Only on generic publisher
   void transmit_message(const u8* bytes, size_t byte_size) {
-    if (!impl->is_network()) {
-      memcpy(impl->get_memory_for_message(), bytes, byte_size);
+    if (!impl_->is_network()) {
+      memcpy(impl_->get_memory_for_message(), bytes, byte_size);
     }
-    impl->transmit_message(bytes, byte_size);
+    impl_->transmit_message(bytes, byte_size);
   }
 
-  u64 get_num_published() const override { return impl->get_num_published(); }
+  u64 get_num_published() const override { return impl_->get_num_published(); }
 
-  bool enable_checksum() override { return impl->enable_checksum(); }
+  bool enable_checksum() override { return impl_->enable_checksum(); }
 
   void preclose() override {
-    if (impl != nullptr) impl->preclose();
+    if (impl_ != nullptr) impl_->preclose();
   }
 
   ~publisher_generic() override {
-    if (impl) {
-      delete impl;
-      impl = nullptr;
+    if (impl_) {
+      delete impl_;
+      impl_ = nullptr;
     }
   }
 };
@@ -762,18 +762,18 @@ public:
 
 class subscribe_impl_shm : public subscribe_impl {
 private:
-  circular_buffer* indices = nullptr;  // Indices are allocated inside of data
-  message_bookkeep* bk = nullptr;      // Also a pointer inside data, shared memory
-  u8* data = nullptr;
-  int mem_fd = -1;
-  u32 mem_length = 0;
-  u8* elems = nullptr;
-  u32 num_elems = 0;
-  u32 aligned_elem_size = 0;
-  s32 last_index = -1;
+  circular_buffer* indices_ = nullptr;  // Indices are allocated inside of data
+  message_bookkeep* bk_ = nullptr;      // Also a pointer inside data, shared memory
+  u8* data_ = nullptr;
+  int mem_fd_ = -1;
+  u32 mem_length_ = 0;
+  u8* elems_ = nullptr;
+  u32 num_elems_ = 0;
+  u32 aligned_elem_size_ = 0;
+  s32 last_index_ = -1;
   std::string topic_name_;
   std::string node_name_;
-  s32 wd = -1;
+  s32 wd_ = -1;
 
   subscribe_impl_shm(subscribe_impl_shm const& other) = delete;
   subscribe_impl_shm& operator=(subscribe_impl_shm const& other) = delete;
@@ -784,13 +784,13 @@ private:
 
 public:
   subscribe_impl_shm(u32 sz)
-      : aligned_elem_size(sz) {}
+      : aligned_elem_size_(sz) {}
 
   ~subscribe_impl_shm() override { close(); }
 
   void set_topic_name(const std::string& topic_name) override { topic_name_ = topic_name; }
   void set_node_name(const std::string& name) override { node_name_ = name; }
-  bool is_open() const override { return mem_fd >= 0; }
+  bool is_open() const override { return mem_fd_ >= 0; }
   // Extend this to check on the memory if the publisher is alive
   bool is_alive() const override { return is_open(); }
 
@@ -806,11 +806,11 @@ public:
 
   void debug_string(std::string& dbg) override;
 
-  void reset_message_index() override { last_index = -1; }
+  void reset_message_index() override { last_index_ = -1; }
 
   u64 get_num_published() const override;
 
-  s32 get_last_index() const override { return last_index; }
+  s32 get_last_index() const override { return last_index_; }
 
   u8* get_message(NodeError& result, float timeout_sec, size_t* msg_size = nullptr) override;
 
@@ -818,7 +818,7 @@ public:
 
   size_t get_num_available() const override;
 
-  size_t get_max_available() const override { return num_elems; }
+  size_t get_max_available() const override { return num_elems_; }
   void preclose() override {}
 };
 
@@ -826,20 +826,20 @@ class subscribe_impl_network : public subscribe_impl {
 private:
   int sockfd_ = -1;
   int pipefd_[2] = {-1, -1};
-  u32 num_elems;
-  u64 num_published = 0;
-  mutable std::mutex mtx;
-  std::condition_variable cond_v;
+  u32 num_elems_;
+  u64 num_published_ = 0;
+  mutable std::mutex mtx_;
+  std::condition_variable cond_v_;
   std::string topic_name_;
   std::string node_name_;
   char thread_name_[16] = {};
   char host_ips_[20][20] = {};
-  std::thread th;
-  std::queue<std::vector<u8>> received_messages;
-  std::queue<std::vector<u8>> available_buffers;
-  std::vector<u8> checkedout_buffer;
-  bool quit_thread = false;
-  bool allow_empty_queue = false;
+  std::thread th_;
+  std::queue<std::vector<u8>> received_messages_;
+  std::queue<std::vector<u8>> available_buffers_;
+  std::vector<u8> checkedout_buffer_;
+  bool quit_thread_ = false;
+  bool allow_empty_queue_ = false;
 
   subscribe_impl_network(subscribe_impl_network const& other) = delete;
   subscribe_impl_network& operator=(subscribe_impl_network const& other) = delete;
@@ -862,7 +862,7 @@ public:
   void set_topic_name(const std::string& topic_name) override { topic_name_ = topic_name; }
   void set_node_name(const std::string& name) override { node_name_ = name; }
   bool is_open() const override { return sockfd_ >= 0; }
-  bool is_alive() const override { return !quit_thread && is_open(); }
+  bool is_alive() const override { return !quit_thread_ && is_open(); }
   s32 get_last_index() const override { return 0; }
   bool is_network() override { return true; }
 
@@ -877,19 +877,19 @@ public:
   u8* get_message(NodeError& result, float timeout_sec, size_t* msg_size = nullptr) override;
   NodeError get_all_messages(std::function<void(u8*, size_t)> fn);
   void release_message(u32 idx) override;
-  size_t get_num_published() const override { return num_published; }
+  size_t get_num_published() const override { return num_published_; }
   size_t get_num_available() const override;
-  size_t get_max_available() const override { return num_elems; }
-  void always_consume_message() override { allow_empty_queue = true; }
-  void preclose() override { quit_thread = true; }
+  size_t get_max_available() const override { return num_elems_; }
+  void always_consume_message() override { allow_empty_queue_ = true; }
+  void preclose() override { quit_thread_ = true; }
 };
 
 template <class T>
 class subscriber {
 private:
-  subscribe_impl* impl = nullptr;
-  u32 pid = 0;
-  T* local_msg = nullptr;
+  subscribe_impl* impl_ = nullptr;
+  u32 pid_ = 0;
+  T* local_msg_ = nullptr;
   std::function<void(node::MsgPtr<T>&)> message_callback_;
   CBufParser* src_parser_ = nullptr;
   CBufParser* dst_parser_ = nullptr;
@@ -964,22 +964,22 @@ private:
     }
 
     if (info.cn_info.is_network) {
-      impl = new subscribe_impl_network();
+      impl_ = new subscribe_impl_network();
     } else {
       // In the shared memory case,
       if (requires_msg_conversion_) {
         // When we require conversion, pass 0
         // as the size so it will use the publisher's
-        impl = new subscribe_impl_shm(0);
+        impl_ = new subscribe_impl_shm(0);
       } else {
         // we want to specify our type's size to ensure matching
         // with the publisher's size
-        impl = new subscribe_impl_shm((sizeof(T) + 15) & ~0x0F);
+        impl_ = new subscribe_impl_shm((sizeof(T) + 15) & ~0x0F);
       }
     }
     VLOG_ASSERT(!node_name_.empty());
-    impl->set_topic_name(topic_name_);
-    impl->set_node_name(node_name_);
+    impl_->set_topic_name(topic_name_);
+    impl_->set_node_name(node_name_);
 
     return res;
   }
@@ -1006,11 +1006,11 @@ public:
 
   const std::string& topic_name() const { return topic_name_; }
 
-  bool is_open() const { return impl && impl->is_open(); }
-  bool is_alive() const { return impl && impl->is_alive(); }
+  bool is_open() const { return impl_ && impl_->is_open(); }
+  bool is_alive() const { return impl_ && impl_->is_alive(); }
 
   void debug_string(std::string& dbg) {
-    if (impl) impl->debug_string(dbg);
+    if (impl_) impl_->debug_string(dbg);
   }
 
   bool process_message_notification(int fd) {
@@ -1020,14 +1020,14 @@ public:
     // By doing this call on the callback we ensure that for shared memory
     // subscribers the callback will return the most recent message
     // Network subscribers do this on the get_message part already
-    if (this->impl && this->impl->is_open()) {
+    if (this->impl_ && this->impl_->is_open()) {
       size_t num_messages_to_process = 0;
       if (this->receive_latest_message_) {
         num_messages_to_process = 1;
         if (is_network()) {
-          this->impl->reset_message_index();
-        } else if (this->impl->is_there_new()) {
-          this->impl->reset_message_index();
+          this->impl_->reset_message_index();
+        } else if (this->impl_->is_there_new()) {
+          this->impl_->reset_message_index();
         } else {
           // This can happen when we are on a loop processing messages on this callback, and a message
           // arrives then, the callback then processes the latest message, but there is a notification still
@@ -1036,7 +1036,7 @@ public:
           return message_processed;
         }
       } else {
-        num_messages_to_process = this->impl->get_num_available();
+        num_messages_to_process = this->impl_->get_num_available();
       }
 
       for (int num_processed = 0; num_processed < num_messages_to_process; num_processed++) {
@@ -1075,7 +1075,7 @@ public:
 
     message_callback_ = cb;
 
-    res = impl->open_notify(
+    res = impl_->open_notify(
         info.cn_info, info.num_elems, nm, [this](int fd) { this->process_message_notification(fd); },
         timeout_connect_sec);
 
@@ -1086,7 +1086,7 @@ public:
       }
     }
 
-    pid = (u32)getpid();
+    pid_ = (u32)getpid();
 
     return res;
   }
@@ -1115,7 +1115,7 @@ public:
     }
 
     // try connecting to that channel
-    res = impl->open(info.cn_info, info.num_elems, quiet, timeout_connect_sec);
+    res = impl_->open(info.cn_info, info.num_elems, quiet, timeout_connect_sec);
     if (res != SUCCESS) {
       if (!quiet) {
         vlog_error(VCAT_NODE, "Subscriber failure to open the topic %s : %s", topic_name_.c_str(),
@@ -1123,7 +1123,7 @@ public:
       }
     }
 
-    pid = (u32)getpid();
+    pid_ = (u32)getpid();
 
     // printf("Opened channel %s with %d length, %s path\n", topic_name_.c_str(),
     //        mem_length, info.cn_info.channel_path.c_str());
@@ -1134,28 +1134,28 @@ public:
   }
 
   /// Non blocking call to see if there is new data
-  bool is_there_new() { return impl && impl->is_there_new() && impl->is_open(); }
+  bool is_there_new() { return impl_ && impl_->is_there_new() && impl_->is_open(); }
 
   void reset_message_index() {
-    if (impl) impl->reset_message_index();
+    if (impl_) impl_->reset_message_index();
   }
 
   size_t get_num_published() const {
-    if (impl) return impl->get_num_published();
+    if (impl_) return impl_->get_num_published();
     return 0;
   }
 
   // return how many available messages are there
   // This can serve as a measure of back pressure
   size_t get_num_available() const {
-    if (impl && impl->is_open()) return impl->get_num_available();
+    if (impl_ && impl_->is_open()) return impl_->get_num_available();
     return 0;
   }
 
   // Get the total number of messages after which
   // reuse does happen
   size_t get_max_available() const {
-    if (impl) return impl->get_max_available();
+    if (impl_) return impl_->get_max_available();
     return 0;
   }
 
@@ -1170,13 +1170,13 @@ public:
   /// Call `reset_message_index` to always obtain the most recent one
   ///
   MsgPtr<T> get_message(NodeError& result, float timeout_sec = NODE_DEFAULT_MSG_WAIT_SEC) {
-    if (impl && impl->is_open()) {
+    if (impl_ && impl_->is_open()) {
       size_t msg_size = 0;
-      u8* ptr = impl->get_message(result, timeout_sec, &msg_size);
+      u8* ptr = impl_->get_message(result, timeout_sec, &msg_size);
 
       if (result != SUCCESS) return {};
       bool msg_conversion_compact = false;
-      if (allow_compact_conversion_ && !impl->is_network() && T::supports_compact()) {
+      if (allow_compact_conversion_ && !impl_->is_network() && T::supports_compact()) {
         // In replayer cases, for SHM and compact messages there is a real chance
         // that the message from the publisher (replayer) is compacted.
         // Force conversion to uncompact it
@@ -1186,40 +1186,40 @@ public:
       }
 
       if (requires_msg_conversion_ || msg_conversion_compact) {
-        if (local_msg == nullptr) {
-          local_msg = new T;
+        if (local_msg_ == nullptr) {
+          local_msg_ = new T;
         }
         int res = src_parser_->FastConversion(T::TYPE_STRING, ptr, msg_size, *dst_parser_, T::TYPE_STRING,
-                                              (unsigned char*)local_msg, sizeof(T));
+                                              (unsigned char*)local_msg_, sizeof(T));
         if (res == 0) {
           result = IDL_DECODE_ERROR;
-          impl->release_message(impl->get_last_index());
+          impl_->release_message(impl_->get_last_index());
           return {};
         }
-        return MsgPtr<T>(local_msg, this, impl->get_last_index());
+        return MsgPtr<T>(local_msg_, this, impl_->get_last_index());
       }
 
-      if (impl->is_network()) {
+      if (impl_->is_network()) {
         if (T::is_simple() && !T::supports_compact()) {
-          return MsgPtr<T>((T*)ptr, this, impl->get_last_index());
+          return MsgPtr<T>((T*)ptr, this, impl_->get_last_index());
         }
-        if (local_msg == nullptr) {
-          local_msg = new T;
+        if (local_msg_ == nullptr) {
+          local_msg_ = new T;
         }
-        local_msg->Init();
-        VLOG_ASSERT(local_msg != nullptr);
-        bool res = local_msg->decode_net((char*)ptr, msg_size);
+        local_msg_->Init();
+        VLOG_ASSERT(local_msg_ != nullptr);
+        bool res = local_msg_->decode_net((char*)ptr, msg_size);
         if (res) {
           result = SUCCESS;
-          return MsgPtr<T>(local_msg, this, impl->get_last_index());
+          return MsgPtr<T>(local_msg_, this, impl_->get_last_index());
         } else {
           result = IDL_DECODE_ERROR;
-          impl->release_message(impl->get_last_index());
+          impl_->release_message(impl_->get_last_index());
           return {};
         }
       } else {
         if (result == SUCCESS) {
-          return MsgPtr<T>((T*)ptr, this, impl->get_last_index());
+          return MsgPtr<T>((T*)ptr, this, impl_->get_last_index());
         }
       }
     }
@@ -1229,8 +1229,8 @@ public:
   }
 
   NodeError get_all_messages(std::vector<T>& vec) {
-    if (!impl || !impl->is_network()) return GENERIC_ERROR;
-    subscribe_impl_network* nimpl = (subscribe_impl_network*)impl;
+    if (!impl_ || !impl_->is_network()) return GENERIC_ERROR;
+    subscribe_impl_network* nimpl = (subscribe_impl_network*)impl_;
     vec.clear();
     nimpl->get_all_messages([&](u8* ptr, size_t sz) {
       vec.emplace_back();
@@ -1245,24 +1245,24 @@ public:
 
   // Consumer: This function assumes that the image* previously returned will no longer be used
   void release_message(MsgPtr<T>& elem) {
-    impl->release_message(elem.getIdx());
+    impl_->release_message(elem.getIdx());
     elem.make_empty();
   }
 
-  bool is_network() const { return impl && impl->is_network(); }
+  bool is_network() const { return impl_ && impl_->is_network(); }
 
   void consume_message_once() {
-    if (impl) impl->always_consume_message();
+    if (impl_) impl_->always_consume_message();
   }
 
   void close() {
-    if (impl) {
-      delete impl;
-      impl = nullptr;
+    if (impl_) {
+      delete impl_;
+      impl_ = nullptr;
     }
-    if (local_msg) {
-      delete local_msg;
-      local_msg = nullptr;
+    if (local_msg_) {
+      delete local_msg_;
+      local_msg_ = nullptr;
     }
     if (src_parser_) {
       delete src_parser_;
@@ -1275,7 +1275,7 @@ public:
   }
 
   void preclose() {
-    if (impl) impl->preclose();
+    if (impl_) impl_->preclose();
   }
   ~subscriber() { close(); }
 };
@@ -1292,7 +1292,7 @@ void MsgPtr<T>::release() {
 
 class observer {
 protected:
-  subscribe_impl* impl = nullptr;
+  subscribe_impl* impl_ = nullptr;
 
   std::string topic_name_;
   std::string node_name_;
@@ -1308,7 +1308,7 @@ public:
       , node_name_(std::move(rhs.node_name_))
       , msg_type_(std::move(rhs.msg_type_))
       , msg_cbuftxt_(std::move(rhs.msg_cbuftxt_)) {
-    std::swap(impl, rhs.impl);
+    std::swap(impl_, rhs.impl_);
     msg_hash_ = rhs.msg_hash_;
   }
 
@@ -1317,14 +1317,14 @@ public:
     node_name_ = std::move(rhs.node_name_);
     msg_type_ = std::move(rhs.msg_type_);
     msg_cbuftxt_ = std::move(rhs.msg_cbuftxt_);
-    std::swap(impl, rhs.impl);
+    std::swap(impl_, rhs.impl_);
     msg_hash_ = rhs.msg_hash_;
     return *this;
   }
 
   void set_topic_name(const std::string& name) {
     topic_name_ = name;
-    if (impl) impl->set_topic_name(name);
+    if (impl_) impl_->set_topic_name(name);
   }
 
   const std::string_view topic_name() const { return topic_name_; }
@@ -1334,7 +1334,7 @@ public:
 
   void set_node_name(const std::string& name) {
     node_name_ = name;
-    if (impl) impl->set_node_name(name);
+    if (impl_) impl_->set_node_name(name);
   }
   const std::string_view node_name() const { return node_name_; }
 
@@ -1352,16 +1352,16 @@ public:
                         float timeout_connect_sec = NODE_MINIMAL_WAIT, float retry_delay_sec = NODE_NO_RETRY,
                         bool quiet = true);
 
-  size_t get_num_published() const { return impl->get_num_published(); }
+  size_t get_num_published() const { return impl_->get_num_published(); }
 
-  size_t get_max_available() const { return impl->get_max_available(); }
+  size_t get_max_available() const { return impl_->get_max_available(); }
 
   void reset_message_index() {
-    if (impl) impl->reset_message_index();
+    if (impl_) impl_->reset_message_index();
   }
 
   /// Non blocking call to see if there is new data
-  bool is_there_new() { return impl && impl->is_there_new() && impl->is_open(); }
+  bool is_there_new() { return impl_ && impl_->is_there_new() && impl_->is_open(); }
 
   ///
   /// \brief get_message
@@ -1374,13 +1374,13 @@ public:
   /// Call `reset_message_index` to always obtain the most recent one
   ///
   MsgBufPtr get_message(NodeError& result, float timeout_sec = NODE_DEFAULT_MSG_WAIT_SEC) {
-    if (impl && impl->is_open()) {
+    if (impl_ && impl_->is_open()) {
       size_t msg_size = 0;
-      u8* ptr = impl->get_message(result, timeout_sec, &msg_size);
+      u8* ptr = impl_->get_message(result, timeout_sec, &msg_size);
 
       if (result != SUCCESS) return {};
 
-      return MsgBufPtr(ptr, msg_size, this, impl->get_last_index());
+      return MsgBufPtr(ptr, msg_size, this, impl_->get_last_index());
     }
 
     result = PRODUCER_NOT_PRESENT;
@@ -1388,15 +1388,15 @@ public:
   }
 
   void preclose() {
-    if (impl) impl->preclose();
+    if (impl_) impl_->preclose();
   }
 
   void release_message(MsgBufPtr& msg);
 
   ~observer() {
-    if (impl) {
-      delete impl;
-      impl = nullptr;
+    if (impl_) {
+      delete impl_;
+      impl_ = nullptr;
     }
   }
 
@@ -1408,19 +1408,19 @@ protected:
 
 class response_provider_base {
 protected:
-  std::string topic_name;
-  rpc_info rp_info;
-  std::vector<u8> receiving_buffer;
-  std::vector<u8> transmitting_buffer;
-  std::set<int> socket_clients;
-  int listen_socket = -1;
-  uint16_t port = -1;
-  char thread_name[16];
-  u64 num_requests_handled = 0;
-  std::string host_ip;
-  std::thread listener;
+  std::string topic_name_;
+  rpc_info rp_info_;
+  std::vector<u8> receiving_buffer_;
+  std::vector<u8> transmitting_buffer_;
+  std::set<int> socket_clients_;
+  int listen_socket_ = -1;
+  uint16_t port_ = -1;
+  char thread_name_[16];
+  u64 num_requests_handled_ = 0;
+  std::string host_ip_;
+  std::thread listener_;
   NotificationManager* nm_ = nullptr;
-  bool accept_new_clients = false;
+  bool accept_new_clients_ = false;
   void thread_function();
   // Returns true if the message was handle, false if the socket got closed
   bool handle_incoming_message(int client_fd);
@@ -1433,12 +1433,12 @@ public:
   response_provider_base() = default;
   virtual ~response_provider_base() { close(); }
 
-  void set_topic_name(const std::string& name) { topic_name = name; }
-  void set_rpc_info(const rpc_info& ri) { rp_info = ri; }
+  void set_topic_name(const std::string& name) { topic_name_ = name; }
+  void set_rpc_info(const rpc_info& ri) { rp_info_ = ri; }
 
-  const std::string& get_topic_name() const { return topic_name; }
-  const rpc_info& get_rpc_info() const { return rp_info; }
-  u64 get_num_requests_handled() const { return num_requests_handled; }
+  const std::string& get_topic_name() const { return topic_name_; }
+  const rpc_info& get_rpc_info() const { return rp_info_; }
+  u64 get_num_requests_handled() const { return num_requests_handled_; }
   virtual void close();
   virtual NodeError handleMsg() = 0;
 };
@@ -1480,7 +1480,7 @@ public:
       return RESPONSE_CALLBACK_NOT_PROVIDED;
     }
 
-    info.topic_name = this->topic_name;
+    info.topic_name = this->topic_name_;
     info.msg_name = RequestT::TYPE_STRING;
     info.msg_hash = RequestT::TYPE_HASH;
     info.num_elems = 0;
@@ -1552,7 +1552,7 @@ public:
   // in the receiving_buffer, it expects transmitting buffer to be set or return false
   // Maybe extend this to error types
   NodeError handleMsg() override {
-    bool res = req_obj->decode_net((char*)receiving_buffer.data(), receiving_buffer.size());
+    bool res = req_obj->decode_net((char*)receiving_buffer_.data(), receiving_buffer_.size());
     if (!res) {
       return IDL_DECODE_ERROR;
     }
@@ -1560,8 +1560,8 @@ public:
     rep_obj->Init();
     if (callback(req_obj, rep_obj)) {
       auto size = rep_obj->encode_net_size();
-      transmitting_buffer.resize(size);
-      res = rep_obj->encode_net((char*)transmitting_buffer.data(), size);
+      transmitting_buffer_.resize(size);
+      res = rep_obj->encode_net((char*)transmitting_buffer_.data(), size);
       VLOG_ASSERT(res, "We should always be able to encode");
       return SUCCESS;
     } else {
@@ -1583,8 +1583,8 @@ class requester_base {
 protected:
   std::string topic_name_;
   std::string node_name_;
-  std::vector<u8> transmitting_buffer;
-  std::vector<u8> receiving_buffer;
+  std::vector<u8> transmitting_buffer_;
+  std::vector<u8> receiving_buffer_;
   std::vector<u8> receiving_buffer_async_;
   char host_ips_[20][20] = {};
   std::string channel_ip_;
@@ -1593,7 +1593,7 @@ protected:
   int sockfd_ = -1;
   float timeout_sec_ = NODE_DEFAULT_WAIT_TIMEOUT;
   float retry_delay_sec_ = NODE_DEFAULT_RETRY_SECS;
-  bool expect_reply = true;
+  bool expect_reply_ = true;
   bool close_request_sent_ = false;
   bool using_notification_manager_ = false;
   NodeError sendRequestOnly();
@@ -1721,15 +1721,15 @@ public:
   NodeError makeRequest(const RequestT& request, ReplyT& reply) {
     NodeError res;
     size_t encoding_size = request.encode_net_size();
-    transmitting_buffer.resize(encoding_size);
-    if (!request.encode_net((char*)transmitting_buffer.data(), encoding_size)) {
+    transmitting_buffer_.resize(encoding_size);
+    if (!request.encode_net((char*)transmitting_buffer_.data(), encoding_size)) {
       return IDL_ENCODE_ERROR;
     }
     res = sendRequest();
     if (res != SUCCESS) {
       return res;
     }
-    if (!reply.decode_net((char*)receiving_buffer.data(), receiving_buffer.size())) {
+    if (!reply.decode_net((char*)receiving_buffer_.data(), receiving_buffer_.size())) {
       return IDL_DECODE_ERROR;
     }
     return res;
@@ -1742,8 +1742,8 @@ public:
       return NodeError::ASYNC_REQUEST_NOT_SUPPORTED;
     }
     size_t encoding_size = request.encode_net_size();
-    transmitting_buffer.resize(encoding_size);
-    if (!request.encode_net((char*)transmitting_buffer.data(), encoding_size)) {
+    transmitting_buffer_.resize(encoding_size);
+    if (!request.encode_net((char*)transmitting_buffer_.data(), encoding_size)) {
       return IDL_ENCODE_ERROR;
     }
     res = sendRequestOnly();
@@ -1769,14 +1769,14 @@ public:
 
 class rpcsubs_impl : public subscribe_impl {
 private:
-  u32 num_published = 0;
+  u32 num_published_ = 0;
   requester_base requester_;
   std::string topic_name_;
   std::string node_name_;
   std::string channel_ip_;
   u16 port_;
-  std::thread th;
-  bool quit_thread = false;
+  std::thread th_;
+  bool quit_thread_ = false;
   float timeout_sec_ = NODE_MINIMAL_WAIT;
 
   rpcsubs_impl(rpcsubs_impl const& other) = delete;
@@ -1816,11 +1816,11 @@ public:
     return SUCCESS;
   }
   void release_message(u32 idx) override { (void)idx; }
-  size_t get_num_published() const override { return num_published; }
+  size_t get_num_published() const override { return num_published_; }
   size_t get_num_available() const override { return 0; }
   size_t get_max_available() const override { return 0; }
   void always_consume_message() override {}
-  void preclose() override { quit_thread = true; }
+  void preclose() override { quit_thread_ = true; }
 };
 
 // Sink and source are a way in node to have multiple publishers
@@ -1949,14 +1949,14 @@ class source_base {
 protected:
   std::string topic_name_;
   std::string node_name_;
-  std::vector<u8> transmitting_buffer;
+  std::vector<u8> transmitting_buffer_;
   std::string channel_ip_;
   std::string connected_ip_;
   struct sockaddr_in* server_address_ = nullptr;
   char host_ips_[20][20] = {};
   uint16_t channel_port_;
   int sockfd_ = -1;
-  bool expect_reply = true;
+  bool expect_reply_ = true;
   bool close_request_sent_ = false;
   bool using_notification_manager_ = false;
   bool skip_logging_ = false;
@@ -2035,8 +2035,8 @@ public:
   NodeError sendMessage(const T& msg) {
     NodeError res;
     size_t encoding_size = msg.encode_net_size();
-    transmitting_buffer.resize(encoding_size);
-    if (!msg.encode_net((char*)transmitting_buffer.data(), encoding_size)) {
+    transmitting_buffer_.resize(encoding_size);
+    if (!msg.encode_net((char*)transmitting_buffer_.data(), encoding_size)) {
       return IDL_ENCODE_ERROR;
     }
     res = sendMessageFromBuffer();
@@ -2046,14 +2046,14 @@ public:
 
 class sourcesubs_impl : public subscribe_impl {
 private:
-  u32 num_published = 0;
+  u32 num_published_ = 0;
   source_base source_;
   std::string topic_name_;
   std::string node_name_;
   std::string channel_ip_;
   u16 port_;
-  std::thread th;
-  bool quit_thread = false;
+  std::thread th_;
+  bool quit_thread_ = false;
 
   sourcesubs_impl(sourcesubs_impl const& other) = delete;
   sourcesubs_impl& operator=(sourcesubs_impl const& other) = delete;
@@ -2091,11 +2091,11 @@ public:
     return SUCCESS;
   }
   void release_message(u32 idx) override { (void)idx; }
-  size_t get_num_published() const override { return num_published; }
+  size_t get_num_published() const override { return num_published_; }
   size_t get_num_available() const override { return 0; }
   size_t get_max_available() const override { return 0; }
   void always_consume_message() override {}
-  void preclose() override { quit_thread = true; }
+  void preclose() override { quit_thread_ = true; }
 };
 
 }  // namespace node
