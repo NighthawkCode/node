@@ -5,7 +5,7 @@ if(Python3_FOUND)
     add_library(pynode SHARED pynode.cpp)
     target_include_directories(pynode PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
     target_link_libraries(pynode PUBLIC Python3::Module nodelib pycbufstatic)
-    target_compile_options(pynode PRIVATE -Wno-writable-strings -Wno-c99-designator -Wno-unused-function -Wno-reserved-identifier -Wno-cast-function-type)
+    target_compile_options(pynode PRIVATE -Wno-writable-strings -Wno-c99-designator -Wno-unused-function -Wno-reserved-identifier -Wno-cast-function-type -Wno-missing-prototypes)
     set_target_properties(pynode PROPERTIES PREFIX "")
 
     set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local")

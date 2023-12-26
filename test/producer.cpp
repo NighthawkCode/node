@@ -6,7 +6,7 @@
 #include "image.h"
 #include "node/core.h"
 
-void Usage() {
+static void Usage() {
   printf("Node producer test\n");
   printf("Usage: prod [OPTIONS]\n");
   printf("  -h: Display this help\n");

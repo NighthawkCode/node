@@ -514,7 +514,7 @@ static node::NodeError send_request_impl(const std::string& server_ip, uint16_t 
   size_t enc_size = request.encode_size();
   std::vector<char> sendBuffer(enc_size);
 
-  bool ret = request.encode(sendBuffer.data(), sendBuffer.size());
+  bool ret = request.encode(sendBuffer.data(), (u32)sendBuffer.size());
   if (!ret) {
     vlog_error(VCAT_NODE, "Error encoding");
     return node::NodeError::IDL_ENCODE_ERROR;
@@ -538,7 +538,7 @@ static node::NodeError send_request_impl(const std::string& server_ip, uint16_t 
                RequestTypeToStr[int(request.action)], get_thread_name(thread_name));
     return node::NodeError::SOCKET_REPLY_ERROR;
   }
-  ret = reply.decode(recvBuffer.data(), n);
+  ret = reply.decode(recvBuffer.data(), (u32)n);
   if (!ret) {
     vlog_error(VCAT_NODE, "Error decoding the received node reply from %s for %s", server_ip.c_str(),
                RequestTypeToStr[int(request.action)]);

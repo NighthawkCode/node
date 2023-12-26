@@ -59,7 +59,7 @@ u32 node_registry::num_topics() {
   return number;
 }
 
-u32 node_registry::num_topics_cli() { return topics.size(); }
+u32 node_registry::num_topics_cli() { return (u32)topics.size(); }
 
 bool node_registry::get_topic_info(u32 topic_index, topic_info& info) {
   std::lock_guard lk(mtx);
@@ -320,7 +320,7 @@ bool node_registry::update_store(const std::vector<std::string>& keys, const std
   std::lock_guard<std::mutex> lk(store_mtx);
   // ensure that this can succeed
   VLOG_ASSERT(keys.size() == values.size());
-  int num_events = keys.size();
+  int num_events = (int)keys.size();
   bool can_update = true;
   for (int i = 0; i < num_events; i++) {
     if ((key_value_store.find(keys[i]) == key_value_store.end() ||

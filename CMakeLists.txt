@@ -31,12 +31,14 @@ target_include_directories(nodelib PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(nodelib PRIVATE cbuf_parse explain pthread rt)
 target_link_libraries(nodelib PUBLIC vlog cbuf_lib)
 set_target_properties(nodelib PROPERTIES CXX_STANDARD 20)
+target_compile_options(nodelib PRIVATE -Wno-cast-align -Wno-missing-prototypes)
 
 # Node app library.  This contains main and is a .so so that it can be dlopen'd
 add_library(nodeapp STATIC ${NODE_APP_SRCS} include/node/node_app.h)
 target_link_libraries(nodeapp PUBLIC nodelib vlog rt)
 target_include_directories(nodeapp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/include)
 set_property(TARGET nodeapp PROPERTY POSITION_INDEPENDENT_CODE ON)
+target_compile_options(nodeapp PRIVATE -Wno-missing-prototypes)
 
 find_package(CUDAToolkit)
 if(CMAKE_CUDA_COMPILER)

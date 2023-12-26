@@ -45,7 +45,7 @@ int main() {
     request.b = 10;
 
     double start_req_time = time_now();
-    node::NodeError res = rpc_req.makeRequest(request, reply);
+    res = rpc_req.makeRequest(request, reply);
     sum_request_time += time_now() - start_req_time;
     if (res != node::NodeError::SUCCESS) {
       printf("Error on request: %d\n", res);

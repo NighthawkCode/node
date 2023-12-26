@@ -536,7 +536,7 @@ public:
       if (buffer_.size() < size) {
         buffer_.resize(size);
       }
-      elem->encode_net((char*)buffer_.data(), size);
+      elem->encode_net((char*)buffer_.data(), (u32)size);
       return impl_->transmit_message(buffer_.data(), size);
     }
   }
@@ -1208,7 +1208,7 @@ public:
         }
         local_msg_->Init();
         VLOG_ASSERT(local_msg_ != nullptr);
-        bool res = local_msg_->decode_net((char*)ptr, msg_size);
+        bool res = local_msg_->decode_net((char*)ptr, (u32)msg_size);
         if (res) {
           result = SUCCESS;
           return MsgPtr<T>(local_msg_, this, impl_->get_last_index());
@@ -1552,7 +1552,7 @@ public:
   // in the receiving_buffer, it expects transmitting buffer to be set or return false
   // Maybe extend this to error types
   NodeError handleMsg() override {
-    bool res = req_obj->decode_net((char*)receiving_buffer_.data(), receiving_buffer_.size());
+    bool res = req_obj->decode_net((char*)receiving_buffer_.data(), (u32)receiving_buffer_.size());
     if (!res) {
       return IDL_DECODE_ERROR;
     }
@@ -1561,7 +1561,7 @@ public:
     if (callback(req_obj, rep_obj)) {
       auto size = rep_obj->encode_net_size();
       transmitting_buffer_.resize(size);
-      res = rep_obj->encode_net((char*)transmitting_buffer_.data(), size);
+      res = rep_obj->encode_net((char*)transmitting_buffer_.data(), (u32)size);
       VLOG_ASSERT(res, "We should always be able to encode");
       return SUCCESS;
     } else {
@@ -1722,14 +1722,14 @@ public:
     NodeError res;
     size_t encoding_size = request.encode_net_size();
     transmitting_buffer_.resize(encoding_size);
-    if (!request.encode_net((char*)transmitting_buffer_.data(), encoding_size)) {
+    if (!request.encode_net((char*)transmitting_buffer_.data(), (u32)encoding_size)) {
       return IDL_ENCODE_ERROR;
     }
     res = sendRequest();
     if (res != SUCCESS) {
       return res;
     }
-    if (!reply.decode_net((char*)receiving_buffer_.data(), receiving_buffer_.size())) {
+    if (!reply.decode_net((char*)receiving_buffer_.data(), (u32)receiving_buffer_.size())) {
       return IDL_DECODE_ERROR;
     }
     return res;
@@ -1743,7 +1743,7 @@ public:
     }
     size_t encoding_size = request.encode_net_size();
     transmitting_buffer_.resize(encoding_size);
-    if (!request.encode_net((char*)transmitting_buffer_.data(), encoding_size)) {
+    if (!request.encode_net((char*)transmitting_buffer_.data(), (u32)encoding_size)) {
       return IDL_ENCODE_ERROR;
     }
     res = sendRequestOnly();
@@ -1758,7 +1758,7 @@ public:
     if (replyObj == nullptr) {
       replyObj = new ReplyT();
     }
-    if (!replyObj->decode_net((char*)receiving_buffer_async_.data(), receiving_buffer_async_.size())) {
+    if (!replyObj->decode_net((char*)receiving_buffer_async_.data(), (u32)receiving_buffer_async_.size())) {
       res = IDL_DECODE_ERROR;
     } else {
       res = SUCCESS;

@@ -88,7 +88,7 @@ public:
 
   int dec(int v) const { return (v + buf_size - 1) % buf_size; }
 
-  void set_buf_size(unsigned int buf_size) { this->buf_size = buf_size; }
+  void set_buf_size(unsigned int buf_sz) { this->buf_size = buf_sz; }
 
   unsigned int get_buf_size() const { return buf_size; }
 

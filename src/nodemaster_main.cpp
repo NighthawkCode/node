@@ -102,7 +102,7 @@ struct peer_info {
   }
 };
 
-void find_peers(peer_info& peer_info) {
+static void find_peers(peer_info& peer_info) {
   // TODO: Write code for broadcast and find other nodemasters
   (void)peer_info;
 }
@@ -314,7 +314,7 @@ static void getTopicsFromPeers(peer_info& peer_info, const std::string& current_
   }
 }
 
-void announceSessionName(peer_info& peer_info, const std::string& current_host_ip,
+static void announceSessionName(peer_info& peer_info, const std::string& current_host_ip,
                          const std::string& session_name) {
   std::set<std::string> peers_to_remove;
 
@@ -592,7 +592,7 @@ static bool nodemaster_handle_request(node::registry_reply& reply, node::registr
     case node::RequestType::UPDATE_STORE: {
       if (!request.update_req.empty()) {
         const auto& req = request.update_req[0];
-        bool ret = reg.update_store(req.keys, req.values, req.owner);
+        ret = reg.update_store(req.keys, req.values, req.owner);
         vlog_debug(VCAT_NODE, "Nodemaster made update request to the store with %lu events", req.keys.size());
         if (ret)
           reply.status = node::RequestStatus::SUCCESS;
@@ -604,7 +604,7 @@ static bool nodemaster_handle_request(node::registry_reply& reply, node::registr
     case node::RequestType::SET_VALUE: {
       if (!request.update_req.empty()) {
         const auto& req = request.update_req[0];
-        bool ret = reg.set_value(req.keys[0], req.values[0], req.owner);
+        ret = reg.set_value(req.keys[0], req.values[0], req.owner);
         vlog_debug(VCAT_NODE, "Nodemaster made set request to the store with (%s, %s). The ret was %d",
                    req.keys[0].c_str(), req.values[0].c_str(), ret);
         if (ret)
@@ -868,7 +868,7 @@ int nodemaster_main(const char* data_path, const char* peer_list, uint16_t node_
       continue;
     }
 
-    ret = request.decode(buffer.data(), rec_size);
+    ret = request.decode(buffer.data(), (u32)rec_size);
     if (!ret) {
       vlog_error(VCAT_NODE, "Nodemaster: error decoding the request");
       close(new_socket);
@@ -884,7 +884,7 @@ int nodemaster_main(const char* data_path, const char* peer_list, uint16_t node_
     if (reply_size > buffer.size()) {
       buffer.resize(reply_size);
     }
-    ret = reply.encode(buffer.data(), buffer.size());
+    ret = reply.encode(buffer.data(), (u32)buffer.size());
     if (!ret) {
       vlog_error(VCAT_NODE, "Error encoding the reply");
       printRequest(request, VL_ERROR);

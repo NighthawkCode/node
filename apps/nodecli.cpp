@@ -37,7 +37,7 @@ static bool verbose = false;
 static bool exit_process = false;
 static bool follow = false;
 
-void Usage() {
+static void Usage() {
   printf("Node command line toolset, v1.0\n");
   printf("  Usage: node [OPTIONS] COMMAND\n");
   printf("  Options:\n");
@@ -101,7 +101,7 @@ static void handle_sigint(int sig) {
   exit_process = true;
 }
 
-bool DoListTopics(std::string& server_ip) {
+static bool DoListTopics(std::string& server_ip) {
   std::vector<topic_info> topics;
 
   if (get_all_topic_info(topics, server_ip) != node::SUCCESS) {
@@ -147,7 +147,7 @@ bool DoListTopics(std::string& server_ip) {
 }
 
 static void printCentered(const char* strToPrint, int sz) {
-  int strsz = strlen(strToPrint);
+  int strsz = (int)strlen(strToPrint);
   int prespace = 0;
   int extraspace = 0;
   if (sz >= strsz) {
@@ -165,9 +165,9 @@ static void printHeaderColor(bool& sw) {
   sw = !sw;
 }
 
-void handleInput(bool& up, bool& down) {
+static void handleInput(bool& up, bool& down) {
   char inbuf[6] = {0};
-  int bytes = read(STDIN_FILENO, inbuf, 6);
+  ssize_t bytes = read(STDIN_FILENO, inbuf, 6);
   if (bytes > 0) {
     // Check for complex things first
     if (bytes == 3 && inbuf[0] == 0x1B && inbuf[1] == 0x5B && inbuf[2] == 0x41) {
@@ -195,7 +195,7 @@ void handleInput(bool& up, bool& down) {
   }
 }
 
-bool DoMonitorTopics(std::string& server_ip) {
+static bool DoMonitorTopics(std::string& server_ip) {
   std::unordered_map<std::string, observer> obsmap;
   std::unordered_map<std::string, Rate> rates;
   double publish_rate, current_time;
@@ -376,7 +376,7 @@ bool DoMonitorTopics(std::string& server_ip) {
   return true;
 }
 
-bool DoNodemasterInfo(const std::string& server_ip) {
+static bool DoNodemasterInfo(const std::string& server_ip) {
   std::vector<std::string> active_peers;
   std::string process_name;
   double uptime = -1;
@@ -386,9 +386,9 @@ bool DoNodemasterInfo(const std::string& server_ip) {
     int hh, mm, ss;
     uint64_t sec = uint64_t(uptime);
     std::string str_uptime = "";
-    hh = sec / 3600;
-    mm = (sec - hh * 3600) / 60;
-    ss = sec - hh * 3600 - mm * 60;
+    hh = int(sec / 3600);
+    mm = int(sec - hh * 3600) / 60;
+    ss = int(sec - hh * 3600 - mm * 60);
     if (hh > 0) {
       str_uptime += std::to_string(hh) + "h";
     }
@@ -409,7 +409,7 @@ bool DoNodemasterInfo(const std::string& server_ip) {
   }
 }
 
-bool DoKillNodemaster(const std::string& server_ip) {
+static bool DoKillNodemaster(const std::string& server_ip) {
   auto err = request_nodemaster_termination("nodecli", server_ip);
   if (err == SUCCESS) {
     printf("Nodemaster at %s terminated successfully\n", server_ip.c_str());
@@ -420,7 +420,7 @@ bool DoKillNodemaster(const std::string& server_ip) {
   }
 }
 
-bool DoPrintMsg(const std::string& topic_name) {
+static bool DoPrintMsg(const std::string& topic_name) {
   node::core ncore;
   auto obs = ncore.observe(topic_name);
   obs.set_node_name("node print");
@@ -480,7 +480,7 @@ bool DoPrintMsg(const std::string& topic_name) {
   return true;
 }
 
-bool DoGetValue(const std::string& key) {
+static bool DoGetValue(const std::string& key) {
   std::string value;
   std::string owner;
   auto ret = get_value(key, value, owner);
@@ -496,7 +496,7 @@ bool DoGetValue(const std::string& key) {
   return ret;
 }
 
-bool DoSetValue(const std::string& key, const std::string& value) {
+static bool DoSetValue(const std::string& key, const std::string& value) {
   auto ret = set_value(key, value);
   if (ret == NodeError::SUCCESS) {
     printf("%s%s", BOLD, GREEN);
@@ -510,7 +510,7 @@ bool DoSetValue(const std::string& key, const std::string& value) {
   return ret;
 }
 
-bool DoPrintStore(const std::string& regex = "") {
+static bool DoPrintStore(const std::string& regex = "") {
   std::vector<std::string> keys, values;
   auto ret = get_store(keys, values, "", true, regex);
   if (ret == NodeError::SUCCESS) {
@@ -527,7 +527,7 @@ bool DoPrintStore(const std::string& regex = "") {
   return ret;
 }
 
-bool DoShutDown(const std::string& host_ip = "") {
+static bool DoShutDown(const std::string& host_ip = "") {
   NodeError err = request_nodemaster_shutdown("nodecli", host_ip);
   if (err != node::SUCCESS) return false;
   return true;

@@ -7,7 +7,7 @@
 #include "image.h"
 #include "node/core.h"
 
-void Usage() {
+static void Usage() {
   printf("Node consumer test\n");
   printf("Usage: cons [OPTIONS]\n");
   printf("  -h: Display this help\n");
@@ -86,11 +86,11 @@ int main(int argc, char** argv) {
       }
       res = image_channel->open(1.0, 1.0, 0.0);
       if (res == node::SUCCESS) {
-        node::MsgPtr<node_msg::image> msg = image_channel->get_message(res);
-        img = *msg;
+        node::MsgPtr<node_msg::image> msg2 = image_channel->get_message(res);
+        img = *msg2;
         printf(" releasing data ... ");
         fflush(stdout);
-        image_channel->release_message(msg);
+        image_channel->release_message(msg2);
         printf(" RELEASED!\n");
       }
     }

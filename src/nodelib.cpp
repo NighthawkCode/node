@@ -630,7 +630,7 @@ static std::string NotifyEventToStr(const struct inotify_event* event) {
 }
 
 void NotificationManager::handle_inotify_events() {
-  int len = 0;
+  ssize_t len = 0;
   const struct inotify_event* event = nullptr;
 
   len = read(inotify_fd_, buf_, sizeof(buf_));
