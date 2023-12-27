@@ -75,7 +75,6 @@ set(CMAKE_CXX_FLAGS
   -Wno-float-conversion \
   -Wno-float-equal \
   -Wno-header-hygiene \
-  -Wno-ignored-qualifiers \
   -Wno-implicit-float-conversion \
   -Wno-missing-noreturn \
   -Wno-newline-eof \
