@@ -129,7 +129,7 @@ static void getStoreFromPeers(peer_info& peer_info, node::node_registry& reg) {
         // this is an error because something went wrong in the internals of the peer while trying to service
         // our normal request
         vlog_error(VCAT_NODE, "Request to get store from %s peer returned with code %d", peer.c_str(),
-                   reply.status);
+                   (int)reply.status);
       }
     } else if (!shutdown_requested && (time_now() - peer_info.active_peers[peer]) > 20.0) {
       // this is a warning because sometimes we might take too long to shutdown and we might be without peers
@@ -166,7 +166,7 @@ static void sendUpdateToPeers(peer_info& peer_info, node::node_registry& reg) {
         // this is an error because something went wrong in the internals of the peer while trying to service
         // our normal request
         vlog_error(VCAT_NODE, "Request to update store from %s peer returned with code %d", peer.c_str(),
-                   reply.status);
+                   (int)reply.status);
       }
     } else if (!shutdown_requested && ((time_now() - peer_info.active_peers[peer]) > 20.0)) {
       // this is a warning because sometimes we might take too long to shutdown and we might be without peers

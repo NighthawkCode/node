@@ -48,7 +48,6 @@ set(CUDA_HOST_COMPILER gcc)
 #  clang/clang++ specific flags
 set(CMAKE_CXX_FLAGS
         "${CMAKE_CXX_FLAGS} \
-  -Weverything \
   -Werror=return-type \
   -Wframe-larger-than=8388608\
   -Wno-c++98-compat \

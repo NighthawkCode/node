@@ -78,8 +78,8 @@ public:
     return snprintf(str, sz,
                     "head: %d head_.refcount %d head_.published %d oldhead: %d oldhead_.refcount %d "
                     "oldhead_.published %d",
-                    head_, bk[head_].refcount, bk[head_].state, old_head, bk[old_head].refcount,
-                    bk[old_head].state);
+                    head_, bk[head_].refcount, (int)bk[head_].state, old_head, bk[old_head].refcount,
+                    (int)bk[old_head].state);
   }
 
   unsigned int get_aligned_elem_size() const { return aligned_elem_size_; }
