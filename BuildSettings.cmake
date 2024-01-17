@@ -13,18 +13,15 @@ if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch64")
     add_compile_options("$<$<COMPILE_LANGUAGE:CXX,C>:-mcpu=cortex-a78>")
     # Orin
     set(CMAKE_CUDA_ARCHITECTURES 72 87)
-    set(VERDANT_TABLET_BUILD ON)
   else()
     add_compile_options("$<$<COMPILE_LANGUAGE:CXX,C>:-mcpu=carmel>")
     # Xavier
     set(CMAKE_CUDA_ARCHITECTURES 60 61 70)
-    set(VERDANT_TABLET_BUILD OFF)
   endif()
 else()
   # x86
   add_compile_options("$<$<COMPILE_LANGUAGE:CXX,C>:-march=x86-64-v3>")
   set(CMAKE_CUDA_ARCHITECTURES 60 61 70 80)
-  set(VERDANT_TABLET_BUILD ON)
 endif()
 
 set(CMAKE_CXX_STANDARD 20)
